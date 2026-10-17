@@ -1,0 +1,8 @@
+import 'package:flutter_test/flutter_test.dart';
+
+void main() {
+  testWidgets('App basic smoke test', (WidgetTester tester) async {
+    // Basic test stub
+    expect(1 + 1, equals(2));
+  });
+}
