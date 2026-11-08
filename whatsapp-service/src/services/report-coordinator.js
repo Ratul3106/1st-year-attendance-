@@ -33,7 +33,7 @@ export async function compileAndDispatchDailyReport(options = {}) {
     options.targetPhone ||
     config?.admin_phone ||
     process.env.DEFAULT_ADMIN_PHONE ||
-    "+919876543200";
+    "+918072459331";
 
   const generatedAtStr = new Date().toLocaleString("en-IN", {
     timeZone: "Asia/Kolkata",

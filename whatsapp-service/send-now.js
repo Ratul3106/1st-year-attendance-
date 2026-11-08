@@ -11,13 +11,13 @@ console.log("============================================================");
 const client = initWhatsAppClient();
 
 async function runTest() {
-  console.log("Waiting for WhatsApp Web to sync and be ready (up to 90 seconds)...");
+  console.log("Waiting for WhatsApp Web to sync and be ready (up to 120 seconds)...");
   let waitCount = 0;
-  while (!isWhatsAppReady() && waitCount < 90) {
+  while (!isWhatsAppReady() && waitCount < 120) {
     await new Promise((r) => setTimeout(r, 1000));
     waitCount++;
     if (waitCount % 10 === 0) {
-      console.log(`[WhatsAppClient] Still syncing chats with WhatsApp Web (${waitCount}s / 90s)...`);
+      console.log(`[WhatsAppClient] Still syncing chats with WhatsApp Web (${waitCount}s / 120s)...`);
     }
   }
 

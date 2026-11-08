@@ -18,7 +18,7 @@ export function generateAttendancePDF({
   generatedAtStr = new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }),
   classDataList = [],
   reportStatus = "PRELIMINARY",
-  adminPhone = "+919876543200",
+  adminPhone = "+918072459331",
   outputPath = null,
 }) {
   return new Promise((resolve, reject) => {

@@ -16,6 +16,7 @@
         "flutter_local_notifications",
         "flutter_riverpod",
         "google_fonts",
+        "http",
         "intl",
         "path_provider",
         "pdf",
@@ -53,6 +54,16 @@
         "stream_channel",
         "test_api",
         "vector_math"
+      ]
+    },
+    {
+      "name": "http",
+      "version": "1.6.0",
+      "dependencies": [
+        "async",
+        "http_parser",
+        "meta",
+        "web"
       ]
     },
     {
@@ -349,23 +360,36 @@
       "dependencies": []
     },
     {
-      "name": "url_launcher_windows",
-      "version": "3.1.6",
+      "name": "http_parser",
+      "version": "4.1.2",
       "dependencies": [
-        "flutter",
-        "meta",
-        "url_launcher_platform_interface"
+        "collection",
+        "source_span",
+        "string_scanner",
+        "typed_data"
       ]
     },
     {
-      "name": "url_launcher_web",
-      "version": "2.4.3",
+      "name": "async",
+      "version": "2.13.1",
       "dependencies": [
-        "flutter",
-        "flutter_web_plugins",
-        "url_launcher_platform_interface",
-        "web"
+        "collection",
+        "meta"
       ]
+    },
+    {
+      "name": "win32",
+      "version": "6.4.0",
+      "dependencies": [
+        "ffi",
+        "ffi_leak_tracker",
+        "meta"
+      ]
+    },
+    {
+      "name": "ffi",
+      "version": "2.2.0",
+      "dependencies": []
     },
     {
       "name": "url_launcher_platform_interface",
@@ -385,6 +409,33 @@
       ]
     },
     {
+      "name": "url_launcher_windows",
+      "version": "3.1.6",
+      "dependencies": [
+        "flutter",
+        "meta",
+        "url_launcher_platform_interface"
+      ]
+    },
+    {
+      "name": "url_launcher_web",
+      "version": "2.4.3",
+      "dependencies": [
+        "flutter",
+        "flutter_web_plugins",
+        "url_launcher_platform_interface",
+        "web"
+      ]
+    },
+    {
+      "name": "file",
+      "version": "7.0.1",
+      "dependencies": [
+        "meta",
+        "path"
+      ]
+    },
+    {
       "name": "share_plus_platform_interface",
       "version": "7.2.0",
       "dependencies": [
@@ -398,11 +449,6 @@
       ]
     },
     {
-      "name": "mime",
-      "version": "2.1.0",
-      "dependencies": []
-    },
-    {
       "name": "flutter_web_plugins",
       "version": "0.0.0",
       "dependencies": [
@@ -410,17 +456,17 @@
       ]
     },
     {
-      "name": "file",
-      "version": "7.0.1",
-      "dependencies": [
-        "meta",
-        "path"
-      ]
+      "name": "mime",
+      "version": "2.1.0",
+      "dependencies": []
     },
     {
-      "name": "ffi",
-      "version": "2.2.0",
-      "dependencies": []
+      "name": "cross_file",
+      "version": "0.3.5+5",
+      "dependencies": [
+        "meta",
+        "web"
+      ]
     },
     {
       "name": "path_provider_windows",
@@ -473,6 +519,23 @@
       ]
     },
     {
+      "name": "equatable",
+      "version": "2.1.0",
+      "dependencies": [
+        "collection",
+        "meta"
+      ]
+    },
+    {
+      "name": "xml",
+      "version": "6.6.1",
+      "dependencies": [
+        "collection",
+        "meta",
+        "petitparser"
+      ]
+    },
+    {
       "name": "archive",
       "version": "3.6.1",
       "dependencies": [
@@ -496,13 +559,33 @@
       ]
     },
     {
-      "name": "http",
-      "version": "1.6.0",
+      "name": "image",
+      "version": "4.3.0",
       "dependencies": [
-        "async",
-        "http_parser",
+        "archive",
         "meta",
-        "web"
+        "xml"
+      ]
+    },
+    {
+      "name": "path_parsing",
+      "version": "1.1.0",
+      "dependencies": [
+        "meta",
+        "vector_math"
+      ]
+    },
+    {
+      "name": "bidi",
+      "version": "2.0.13",
+      "dependencies": []
+    },
+    {
+      "name": "barcode",
+      "version": "2.2.9",
+      "dependencies": [
+        "meta",
+        "qr"
       ]
     },
     {
@@ -722,14 +805,6 @@
       ]
     },
     {
-      "name": "async",
-      "version": "2.13.1",
-      "dependencies": [
-        "collection",
-        "meta"
-      ]
-    },
-    {
       "name": "app_links",
       "version": "7.2.2",
       "dependencies": [
@@ -737,91 +812,6 @@
         "app_links_platform_interface",
         "app_links_web",
         "flutter"
-      ]
-    },
-    {
-      "name": "yet_another_json_isolate",
-      "version": "2.1.1",
-      "dependencies": [
-        "async"
-      ]
-    },
-    {
-      "name": "storage_client",
-      "version": "2.8.1",
-      "dependencies": [
-        "http",
-        "logging",
-        "meta",
-        "mime",
-        "supabase_common"
-      ]
-    },
-    {
-      "name": "realtime_client",
-      "version": "2.13.1",
-      "dependencies": [
-        "collection",
-        "http",
-        "logging",
-        "meta",
-        "supabase_common",
-        "web_socket_channel"
-      ]
-    },
-    {
-      "name": "postgrest",
-      "version": "2.9.1",
-      "dependencies": [
-        "http",
-        "logging",
-        "meta",
-        "supabase_common",
-        "yet_another_json_isolate"
-      ]
-    },
-    {
-      "name": "gotrue",
-      "version": "2.27.3",
-      "dependencies": [
-        "collection",
-        "crypto",
-        "dart_jsonwebtoken",
-        "http",
-        "logging",
-        "meta",
-        "supabase_common",
-        "web"
-      ]
-    },
-    {
-      "name": "functions_client",
-      "version": "2.7.1",
-      "dependencies": [
-        "http",
-        "logging",
-        "supabase_common",
-        "yet_another_json_isolate"
-      ]
-    },
-    {
-      "name": "web_socket_channel",
-      "version": "3.0.3",
-      "dependencies": [
-        "async",
-        "crypto",
-        "stream_channel",
-        "web",
-        "web_socket"
-      ]
-    },
-    {
-      "name": "dart_jsonwebtoken",
-      "version": "3.4.1",
-      "dependencies": [
-        "clock",
-        "convert",
-        "pointycastle"
       ]
     },
     {
@@ -891,6 +881,13 @@
       ]
     },
     {
+      "name": "ffi_leak_tracker",
+      "version": "0.1.2",
+      "dependencies": [
+        "ffi"
+      ]
+    },
+    {
       "name": "platform",
       "version": "3.2.0",
       "dependencies": [
@@ -941,13 +938,18 @@
       ]
     },
     {
-      "name": "http_parser",
-      "version": "4.1.2",
+      "name": "petitparser",
+      "version": "7.0.2",
       "dependencies": [
         "collection",
-        "source_span",
-        "string_scanner",
-        "typed_data"
+        "meta"
+      ]
+    },
+    {
+      "name": "qr",
+      "version": "3.0.3",
+      "dependencies": [
+        "meta"
       ]
     },
     {
@@ -958,15 +960,6 @@
         "ffi",
         "meta",
         "xml"
-      ]
-    },
-    {
-      "name": "xml",
-      "version": "6.6.1",
-      "dependencies": [
-        "collection",
-        "meta",
-        "petitparser"
       ]
     },
     {
@@ -1008,6 +1001,71 @@
       ]
     },
     {
+      "name": "yet_another_json_isolate",
+      "version": "2.1.1",
+      "dependencies": [
+        "async"
+      ]
+    },
+    {
+      "name": "storage_client",
+      "version": "2.8.1",
+      "dependencies": [
+        "http",
+        "logging",
+        "meta",
+        "mime",
+        "supabase_common"
+      ]
+    },
+    {
+      "name": "realtime_client",
+      "version": "2.13.1",
+      "dependencies": [
+        "collection",
+        "http",
+        "logging",
+        "meta",
+        "supabase_common",
+        "web_socket_channel"
+      ]
+    },
+    {
+      "name": "postgrest",
+      "version": "2.9.1",
+      "dependencies": [
+        "http",
+        "logging",
+        "meta",
+        "supabase_common",
+        "yet_another_json_isolate"
+      ]
+    },
+    {
+      "name": "gotrue",
+      "version": "2.27.3",
+      "dependencies": [
+        "collection",
+        "crypto",
+        "dart_jsonwebtoken",
+        "http",
+        "logging",
+        "meta",
+        "supabase_common",
+        "web"
+      ]
+    },
+    {
+      "name": "functions_client",
+      "version": "2.7.1",
+      "dependencies": [
+        "http",
+        "logging",
+        "supabase_common",
+        "yet_another_json_isolate"
+      ]
+    },
+    {
       "name": "json_annotation",
       "version": "4.12.0",
       "dependencies": [
@@ -1038,28 +1096,6 @@
       "dependencies": [
         "app_links_platform_interface",
         "flutter"
-      ]
-    },
-    {
-      "name": "web_socket",
-      "version": "1.0.1",
-      "dependencies": [
-        "web"
-      ]
-    },
-    {
-      "name": "pointycastle",
-      "version": "4.0.0",
-      "dependencies": [
-        "collection",
-        "convert"
-      ]
-    },
-    {
-      "name": "convert",
-      "version": "3.1.2",
-      "dependencies": [
-        "typed_data"
       ]
     },
     {
@@ -1115,11 +1151,23 @@
       "dependencies": []
     },
     {
-      "name": "petitparser",
-      "version": "7.0.2",
+      "name": "web_socket_channel",
+      "version": "3.0.3",
       "dependencies": [
-        "collection",
-        "meta"
+        "async",
+        "crypto",
+        "stream_channel",
+        "web",
+        "web_socket"
+      ]
+    },
+    {
+      "name": "dart_jsonwebtoken",
+      "version": "3.4.1",
+      "dependencies": [
+        "clock",
+        "convert",
+        "pointycastle"
       ]
     },
     {
@@ -1141,72 +1189,25 @@
       ]
     },
     {
-      "name": "bidi",
-      "version": "2.0.13",
-      "dependencies": []
-    },
-    {
-      "name": "cross_file",
-      "version": "0.3.5+5",
+      "name": "web_socket",
+      "version": "1.0.1",
       "dependencies": [
-        "meta",
         "web"
       ]
     },
     {
-      "name": "win32",
-      "version": "6.4.0",
-      "dependencies": [
-        "ffi",
-        "ffi_leak_tracker",
-        "meta"
-      ]
-    },
-    {
-      "name": "ffi_leak_tracker",
-      "version": "0.1.2",
-      "dependencies": [
-        "ffi"
-      ]
-    },
-    {
-      "name": "path_parsing",
-      "version": "1.1.0",
-      "dependencies": [
-        "meta",
-        "vector_math"
-      ]
-    },
-    {
-      "name": "barcode",
-      "version": "2.2.9",
-      "dependencies": [
-        "meta",
-        "qr"
-      ]
-    },
-    {
-      "name": "qr",
-      "version": "3.0.3",
-      "dependencies": [
-        "meta"
-      ]
-    },
-    {
-      "name": "equatable",
-      "version": "2.1.0",
+      "name": "pointycastle",
+      "version": "4.0.0",
       "dependencies": [
         "collection",
-        "meta"
+        "convert"
       ]
     },
     {
-      "name": "image",
-      "version": "4.3.0",
+      "name": "convert",
+      "version": "3.1.2",
       "dependencies": [
-        "archive",
-        "meta",
-        "xml"
+        "typed_data"
       ]
     }
   ],

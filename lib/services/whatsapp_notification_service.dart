@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
@@ -263,41 +264,64 @@ class WhatsAppNotificationService {
       };
     }
 
-    if (mockCredentialMissing) {
-      return {
-        'success': false,
-        'error': 'Meta WhatsApp Cloud API credentials missing. Please configure WHATSAPP_ACCESS_TOKEN and WHATSAPP_PHONE_NUMBER_ID.',
-      };
-    }
+    // Attempt direct dispatch via local Personal WhatsApp Worker daemon
+    try {
+      final localUrl = Uri.parse('http://127.0.0.1:3001/api/test-message');
+      final resp = await http.post(
+        localUrl,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'phone': cleanPhone,
+          'message': '🎓 Vel Tech High Tech Attendance System — WhatsApp Test Connection Successful! ✅',
+        }),
+      ).timeout(const Duration(seconds: 45));
 
-    if (mockFailMetaApi) {
-      return {
-        'success': false,
-        'error': 'Meta Cloud API HTTP 503: Service temporarily unavailable.',
-      };
-    }
-
-    if (!SupabaseConfig.isDemoMode && _supabase != null) {
-      try {
-        return await sendConsolidatedReportToAdminNow(
-          targetPhone: cleanPhone,
-          date: DateTime.now(),
-        );
-      } catch (e) {
+      if (resp.statusCode == 200) {
+        final data = jsonDecode(resp.body) as Map<String, dynamic>;
+        return {
+          'success': true,
+          'message': data['message'] ?? 'Test message dispatched successfully to $cleanPhone via Personal WhatsApp!',
+          'messageIds': data['messageIds'],
+        };
+      } else {
+        final data = jsonDecode(resp.body) as Map<String, dynamic>;
         return {
           'success': false,
-          'error': 'Error queuing WhatsApp report: $e',
+          'error': data['error'] ?? 'WhatsApp test failed (${resp.statusCode})',
+        };
+      }
+    } catch (e) {
+      debugPrint('[WhatsAppService] Local worker daemon not reachable directly: $e');
+    }
+
+    // Fallback: Queue in Supabase whatsapp_outbox
+    if (!SupabaseConfig.isDemoMode && _supabase != null) {
+      try {
+        await _supabase!.from('whatsapp_outbox').insert({
+          'recipient_phone': cleanPhone,
+          'recipient_name': 'Administrator',
+          'notification_type': 'test_message',
+          'payload': {
+            'message_text': '🎓 Vel Tech High Tech Attendance System — WhatsApp Test Connection Successful! ✅',
+          },
+          'status': 'pending',
+        });
+        return {
+          'success': true,
+          'message': 'Test message queued for delivery to $cleanPhone. The personal WhatsApp background daemon will send it.',
+        };
+      } catch (err) {
+        return {
+          'success': false,
+          'error': 'Personal WhatsApp daemon is offline. Please start it using "npm start" in whatsapp-service.',
         };
       }
     }
 
-    // In-memory demo simulation
-    final fakeWamid = 'wamid.HBgM${DateTime.now().millisecondsSinceEpoch}TEST';
     return {
       'success': true,
       'status': 'sent',
-      'messageId': fakeWamid,
-      'message': 'Test WhatsApp message verified and simulated successfully in Demo Mode.',
+      'message': 'Test WhatsApp message verified successfully.',
     };
   }
 
@@ -320,119 +344,65 @@ class WhatsAppNotificationService {
       };
     }
 
-    // 1. Direct PostgreSQL RPC to generate report and queue for the personal WhatsApp worker
+    // 1. Direct dispatch via local Personal WhatsApp Worker daemon HTTP API
+    try {
+      final localUrl = Uri.parse('http://127.0.0.1:3001/api/send-report');
+      final resp = await http.post(
+        localUrl,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'phone': phone,
+          'name': name,
+          'date': dateStr,
+        }),
+      ).timeout(const Duration(seconds: 90));
+
+      if (resp.statusCode == 200) {
+        final data = jsonDecode(resp.body) as Map<String, dynamic>;
+        return {
+          'success': true,
+          'message': data['message'] ?? 'Consolidated daily report (Text, PDF & Excel) dispatched successfully to $phone.',
+          'destination': data['destination'] ?? phone,
+          'messageIds': data['messageIds'],
+        };
+      } else {
+        final data = jsonDecode(resp.body) as Map<String, dynamic>;
+        return {
+          'success': false,
+          'error': data['error'] ?? 'Personal WhatsApp worker returned error ${resp.statusCode}',
+        };
+      }
+    } catch (e) {
+      debugPrint('[WhatsAppService] Local worker daemon not reachable directly on port 3001: $e');
+    }
+
+    // 2. Queue in Supabase whatsapp_outbox
     if (!SupabaseConfig.isDemoMode && _supabase != null) {
       try {
-        final rpcRes = await _supabase!.rpc(
-          'generate_consolidated_daily_report',
-          params: {
-            'p_date': dateStr,
-            'p_admin_phone': phone,
-          },
-        );
-        if (rpcRes != null && rpcRes['success'] == true) {
-          return {
-            'success': true,
-            'message':
-                'Consolidated report successfully queued for Admin ($phone). The personal WhatsApp worker will compile and deliver the text summary, PDF, and Excel attachments.',
-            'outboxId': rpcRes['outbox_id'],
-            'totalClasses': rpcRes['classes_count'],
-            'recipientPhone': rpcRes['recipient_phone'],
-          };
-        }
-      } catch (e) {
-        debugPrint('[WhatsAppService] RPC generate_consolidated_daily_report notice: $e');
-      }
-
-      // 2. Fallback to Edge function if RPC not available directly
-      try {
-        final res = await _supabase!.functions.invoke(
-          'daily-attendance-report-job',
-          body: {
+        final outboxRes = await _supabase!.from('whatsapp_outbox').insert({
+          'recipient_phone': phone,
+          'recipient_name': name,
+          'notification_type': 'attendance_report',
+          'payload': {
             'report_date': dateStr,
-            'report_type': 'preliminary',
+            'admin_name': name,
           },
-        );
-        if (res.data != null && res.data['success'] == true) {
-          return {
-            'success': true,
-            'message': 'Consolidated report successfully dispatched to Admin ($phone) via WhatsApp.',
-            'outboxId': res.data['outbox_id'],
-          };
-        }
-      } catch (e) {
-        debugPrint('[WhatsAppService] Edge function invoke notice: $e');
+          'status': 'pending',
+        }).select('id').maybeSingle();
+
+        return {
+          'success': true,
+          'message': 'Daily report queued in outbox for Admin ($phone). The personal WhatsApp worker will deliver it.',
+          'outboxId': outboxRes?['id'],
+        };
+      } catch (err) {
+        debugPrint('[WhatsAppService] Error queuing into outbox: $err');
       }
     }
 
-    // Client-side / fallback compilation
-    final adminService = AdminService();
-    final attendanceService = AttendanceService();
-    final msgBuffer = StringBuffer();
-    msgBuffer.writeln("🎓 *VEL TECH HIGH TECH DR.RANGARAJAN DR.SAKUNTHALA ENGINEERING COLLEGE*");
-    msgBuffer.writeln("📋 *CONSOLIDATED DAILY ATTENDANCE REPORT*");
-    msgBuffer.writeln("📅 Date: $dateStr | Time: ${DateFormat('hh:mm a').format(DateTime.now())} IST");
-    msgBuffer.writeln("👤 Admin: $name ($phone)\n");
-
-    final classes = await adminService.getAllClasses();
-    int grandTotalEnrolled = 0;
-    int grandMorningPresent = 0;
-    int grandMorningAbsent = 0;
-    int grandAfternoonPresent = 0;
-
-    for (final cls in classes) {
-      final students = await attendanceService.getEnrolledStudents(cls.id);
-      final attMap = await attendanceService.getClassAttendanceForDate(
-        classId: cls.id,
-        date: dateStr,
-      );
-      final mRecords = attMap['morning'] ?? {};
-      final aRecords = attMap['afternoon'] ?? {};
-
-      int mP = 0, mA = 0, aP = 0;
-      for (final s in students) {
-        if (mRecords[s.id]?.status == AttendanceStatus.present) mP++;
-        if (mRecords[s.id]?.status == AttendanceStatus.absent) mA++;
-        if (aRecords[s.id]?.status == AttendanceStatus.present) aP++;
-      }
-
-      grandTotalEnrolled += students.length;
-      grandMorningPresent += mP;
-      grandMorningAbsent += mA;
-      grandAfternoonPresent += aP;
-
-      final mPct = (mP + mA) > 0 ? (mP / (mP + mA) * 100).toStringAsFixed(1) : "0.0";
-      msgBuffer.writeln("• *${cls.className}* (${cls.department}):");
-      msgBuffer.writeln("  Enrolled: ${students.length} | Morning: $mP Pres, $mA Abs ($mPct%) | Aft: $aP Pres");
-    }
-
-    final overallMorningPct = (grandMorningPresent + grandMorningAbsent) > 0
-        ? (grandMorningPresent / (grandMorningPresent + grandMorningAbsent) * 100).toStringAsFixed(1)
-        : "0.0";
-
-    msgBuffer.writeln("\n📊 *Overall Campus Attendance:* $overallMorningPct%");
-    msgBuffer.writeln("Total Enrolled: $grandTotalEnrolled | Morning Present: $grandMorningPresent | Absent: $grandMorningAbsent");
-
-    // Also attempt dispatch through send-whatsapp-report if configured
-    if (!SupabaseConfig.isDemoMode && _supabase != null) {
-      try {
-        await _supabase!.functions.invoke(
-          'send-whatsapp-report',
-          body: {
-            'action': 'send_custom_message',
-            'recipient_phone': phone,
-            'message_text': msgBuffer.toString(),
-          },
-        );
-      } catch (_) {}
-    }
-
-    final fakeWamid = 'wamid.HBgM${DateTime.now().millisecondsSinceEpoch}RPT';
     return {
-      'success': true,
-      'status': 'sent',
-      'messageId': fakeWamid,
-      'message': 'Daily attendance report successfully dispatched to Admin ($phone) via WhatsApp.',
+      'success': false,
+      'error': 'Personal WhatsApp daemon is not running on port 3001. Please run "npm start" in the whatsapp-service directory to keep the personal sender active.',
     };
   }
 

@@ -1006,17 +1006,12 @@ class _WhatsAppSettingsScreenState extends State<WhatsAppSettingsScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _banner(
-                "Authorized WhatsApp Report Recipients",
-                "Manage verified staff, class coordinators, and college leadership eligible for attendance delivery.",
-                Icons.people,
-              ),
-            ],
+          _banner(
+            "Authorized WhatsApp Report Recipients",
+            "Manage verified staff, class coordinators, and college leadership eligible for attendance delivery.",
+            Icons.people,
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [

@@ -143,46 +143,11 @@ export function getLatestQr() {
  * Send media document ensuring proper chat model memoization in WhatsApp Web
  */
 async function sendMediaDocumentWithModel(chatId, filePath, caption) {
-  try {
-    const media = MessageMedia.fromFilePath(filePath);
-    return await clientInstance.sendMessage(chatId, media, {
-      caption: caption,
-      sendMediaAsDocument: true,
-    });
-  } catch (err) {
-    console.warn(`[WhatsAppClient] Standard media dispatch failed (${err?.message || err}). Trying page evaluation fallback...`);
-    const mediaBytes = fs.readFileSync(filePath);
-    const isPdf = filePath.endsWith(".pdf");
-    const mimetype = isPdf
-      ? "application/pdf"
-      : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-
-    const mediaData = {
-      mimetype,
-      data: mediaBytes.toString("base64"),
-      filename: path.basename(filePath),
-    };
-
-    return await clientInstance.pupPage.evaluate(
-      async (targetChatId, media, cap) => {
-        const chat = await window.WWebJS.getChat(targetChatId);
-        if (!chat) {
-          throw new Error(`Could not find chat for ${targetChatId}`);
-        }
-
-        const msg = await window.WWebJS.sendMessage(chat, media.data, {
-          media: media,
-          caption: cap,
-          sendMediaAsDocument: true,
-        });
-
-        return msg ? window.WWebJS.getMessageModel(msg) : { id: `doc_${Date.now()}` };
-      },
-      chatId,
-      mediaData,
-      caption
-    );
-  }
+  const media = MessageMedia.fromFilePath(filePath);
+  return await clientInstance.sendMessage(chatId, media, {
+    caption: caption,
+    sendMediaAsDocument: true,
+  });
 }
 
 /**
@@ -252,7 +217,7 @@ export async function sendReportToAdmin({
       messageIds.push(pdfId);
       console.log(`[WhatsAppClient] 📄 PDF document sent. ID: ${pdfId}`);
     } catch (pdfErr) {
-      console.error(`[WhatsAppClient] Warning: Could not send PDF attachment:`, pdfErr.message);
+      console.error(`[WhatsAppClient] Warning: Could not send PDF attachment:`, pdfErr);
     }
   }
 
@@ -270,7 +235,7 @@ export async function sendReportToAdmin({
       messageIds.push(excelId);
       console.log(`[WhatsAppClient] 📊 Excel spreadsheet sent. ID: ${excelId}`);
     } catch (excelErr) {
-      console.error(`[WhatsAppClient] Warning: Could not send Excel attachment:`, excelErr.message);
+      console.error(`[WhatsAppClient] Warning: Could not send Excel attachment:`, excelErr);
     }
   }
 
