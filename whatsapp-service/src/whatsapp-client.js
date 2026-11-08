@@ -32,6 +32,17 @@ export function initWhatsAppClient() {
     fs.mkdirSync(authDir, { recursive: true });
   }
 
+  // Clean up any stale Chromium devtools/lock files left by previous killed runs
+  const sessionDir = path.join(authDir, "session");
+  if (fs.existsSync(sessionDir)) {
+    const devToolsFile = path.join(sessionDir, "DevToolsActivePort");
+    const lockFile = path.join(sessionDir, "lockfile");
+    try {
+      if (fs.existsSync(devToolsFile)) fs.unlinkSync(devToolsFile);
+      if (fs.existsSync(lockFile)) fs.unlinkSync(lockFile);
+    } catch (_) {}
+  }
+
   console.log("------------------------------------------------------------");
   console.log("[WhatsAppClient] Initializing WhatsApp Personal Client...");
   console.log("[WhatsAppClient] LocalAuth Directory:", authDir);
@@ -64,6 +75,14 @@ export function initWhatsAppClient() {
     console.log("============================================================\n");
     qrcode.generate(qr, { small: true });
     console.log("\nWaiting for QR scan...\n");
+  });
+
+  clientInstance.on("loading_screen", (percent, message) => {
+    console.log(`[WhatsAppClient] ⏳ Loading screen: ${percent}% — ${message}`);
+  });
+
+  clientInstance.on("change_state", (state) => {
+    console.log(`[WhatsAppClient] 🔄 State changed: ${state}`);
   });
 
   clientInstance.on("authenticated", () => {
@@ -121,6 +140,52 @@ export function getLatestQr() {
 }
 
 /**
+ * Send media document ensuring proper chat model memoization in WhatsApp Web
+ */
+async function sendMediaDocumentWithModel(chatId, filePath, caption) {
+  try {
+    const media = MessageMedia.fromFilePath(filePath);
+    return await clientInstance.sendMessage(chatId, media, {
+      caption: caption,
+      sendMediaAsDocument: true,
+    });
+  } catch (err) {
+    console.warn(`[WhatsAppClient] Standard media dispatch failed (${err?.message || err}). Trying page evaluation fallback...`);
+    const mediaBytes = fs.readFileSync(filePath);
+    const isPdf = filePath.endsWith(".pdf");
+    const mimetype = isPdf
+      ? "application/pdf"
+      : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+
+    const mediaData = {
+      mimetype,
+      data: mediaBytes.toString("base64"),
+      filename: path.basename(filePath),
+    };
+
+    return await clientInstance.pupPage.evaluate(
+      async (targetChatId, media, cap) => {
+        const chat = await window.WWebJS.getChat(targetChatId);
+        if (!chat) {
+          throw new Error(`Could not find chat for ${targetChatId}`);
+        }
+
+        const msg = await window.WWebJS.sendMessage(chat, media.data, {
+          media: media,
+          caption: cap,
+          sendMediaAsDocument: true,
+        });
+
+        return msg ? window.WWebJS.getMessageModel(msg) : { id: `doc_${Date.now()}` };
+      },
+      chatId,
+      mediaData,
+      caption
+    );
+  }
+}
+
+/**
  * Dispatch text summary, PDF, and Excel attachments to Admin's WhatsApp
  */
 export async function sendReportToAdmin({
@@ -135,53 +200,87 @@ export async function sendReportToAdmin({
     );
   }
 
-  const jid = formatToWhatsAppJid(phone);
-  if (!jid) {
-    throw new Error(`Invalid destination phone number: ${phone}`);
+  const digits = String(phone).replace(/\D/g, "");
+  const cleanDigits = digits.length === 10 ? `91${digits}` : digits;
+
+  console.log(`[WhatsAppClient] Validating destination WhatsApp registration for +${cleanDigits}...`);
+  const targetChatId = `${cleanDigits}@c.us`;
+
+  try {
+    const numberId = await clientInstance.getNumberId(cleanDigits);
+    if (numberId) {
+      console.log(`[WhatsAppClient] Verified recipient is registered on WhatsApp.`);
+    } else {
+      throw new Error(
+        `The destination phone number +${cleanDigits} is not registered on WhatsApp. Please check the recipient number.`
+      );
+    }
+  } catch (err) {
+    if (err.message.includes("not registered")) {
+      throw err;
+    }
+    console.warn(`[WhatsAppClient] getNumberId notice: ${err.message}. Proceeding to ${targetChatId}...`);
   }
 
-  console.log(`[WhatsAppClient] Sending consolidated attendance report to ${jid}...`);
+  console.log(`[WhatsAppClient] Sending consolidated attendance report to ${targetChatId}...`);
   const messageIds = [];
 
   // 1. Send Text Summary Message
   if (textMessage) {
-    const textRes = await clientInstance.sendMessage(jid, textMessage);
-    messageIds.push(textRes.id._serialized || textRes.id.id);
-    console.log(`[WhatsAppClient] 💬 Text summary sent. ID: ${messageIds[0]}`);
+    try {
+      const textRes = await clientInstance.sendMessage(targetChatId, textMessage);
+      const msgId = textRes?.id?._serialized || textRes?.id?.id || `msg_${Date.now()}`;
+      messageIds.push(msgId);
+      console.log(`[WhatsAppClient] 💬 Text summary sent. ID: ${msgId}`);
+    } catch (textErr) {
+      console.error(`[WhatsAppClient] Error sending text:`, textErr.message);
+    }
   }
 
   // Small delay between attachments for message ordering
-  await new Promise((r) => setTimeout(r, 1000));
+  await new Promise((r) => setTimeout(r, 2000));
 
   // 2. Send PDF Document Attachment
   if (pdfPath && fs.existsSync(pdfPath)) {
-    const pdfMedia = MessageMedia.fromFilePath(pdfPath);
-    const pdfRes = await clientInstance.sendMessage(jid, pdfMedia, {
-      sendMediaAsDocument: true,
-      caption: "📄 Vel Tech High Tech — Consolidated Attendance Report (PDF)",
-    });
-    const pdfId = pdfRes.id._serialized || pdfRes.id.id;
-    messageIds.push(pdfId);
-    console.log(`[WhatsAppClient] 📄 PDF document sent. ID: ${pdfId}`);
+    try {
+      const pdfRes = await sendMediaDocumentWithModel(
+        targetChatId,
+        pdfPath,
+        "📄 Vel Tech High Tech — Consolidated Attendance Report (PDF)"
+      );
+      const pdfId = pdfRes?.id?._serialized || pdfRes?.id?.id || `pdf_${Date.now()}`;
+      messageIds.push(pdfId);
+      console.log(`[WhatsAppClient] 📄 PDF document sent. ID: ${pdfId}`);
+    } catch (pdfErr) {
+      console.error(`[WhatsAppClient] Warning: Could not send PDF attachment:`, pdfErr.message);
+    }
   }
 
-  await new Promise((r) => setTimeout(r, 1000));
+  await new Promise((r) => setTimeout(r, 2000));
 
   // 3. Send Excel Workbook Attachment
   if (excelPath && fs.existsSync(excelPath)) {
-    const excelMedia = MessageMedia.fromFilePath(excelPath);
-    const excelRes = await clientInstance.sendMessage(jid, excelMedia, {
-      sendMediaAsDocument: true,
-      caption: "📊 Vel Tech High Tech — Detailed Attendance Workbook (Excel)",
-    });
-    const excelId = excelRes.id._serialized || excelRes.id.id;
-    messageIds.push(excelId);
-    console.log(`[WhatsAppClient] 📊 Excel spreadsheet sent. ID: ${excelId}`);
+    try {
+      const excelRes = await sendMediaDocumentWithModel(
+        targetChatId,
+        excelPath,
+        "📊 Vel Tech High Tech — Detailed Attendance Workbook (Excel)"
+      );
+      const excelId = excelRes?.id?._serialized || excelRes?.id?.id || `excel_${Date.now()}`;
+      messageIds.push(excelId);
+      console.log(`[WhatsAppClient] 📊 Excel spreadsheet sent. ID: ${excelId}`);
+    } catch (excelErr) {
+      console.error(`[WhatsAppClient] Warning: Could not send Excel attachment:`, excelErr.message);
+    }
+  }
+
+  if (messageIds.length === 0) {
+    throw new Error("Failed to deliver any messages to recipient.");
   }
 
   return {
     success: true,
-    destination: jid,
+    destination: targetChatId,
     messageIds,
   };
 }

@@ -11,11 +11,14 @@ console.log("============================================================");
 const client = initWhatsAppClient();
 
 async function runTest() {
-  console.log("Waiting for WhatsApp client to be ready (up to 30 seconds)...");
+  console.log("Waiting for WhatsApp Web to sync and be ready (up to 90 seconds)...");
   let waitCount = 0;
-  while (!isWhatsAppReady() && waitCount < 30) {
+  while (!isWhatsAppReady() && waitCount < 90) {
     await new Promise((r) => setTimeout(r, 1000));
     waitCount++;
+    if (waitCount % 10 === 0) {
+      console.log(`[WhatsAppClient] Still syncing chats with WhatsApp Web (${waitCount}s / 90s)...`);
+    }
   }
 
   if (!isWhatsAppReady()) {
@@ -30,9 +33,15 @@ async function runTest() {
     });
     console.log("🎉 SUCCESS! Report dispatched to Admin:", res.destination);
     console.log("Message IDs:", res.messageIds);
+    try {
+      await client.destroy();
+    } catch (_) {}
     process.exit(0);
   } catch (err) {
     console.error("❌ Error dispatching report:", err);
+    try {
+      await client.destroy();
+    } catch (_) {}
     process.exit(1);
   }
 }

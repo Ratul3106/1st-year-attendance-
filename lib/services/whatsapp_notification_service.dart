@@ -279,31 +279,14 @@ class WhatsAppNotificationService {
 
     if (!SupabaseConfig.isDemoMode && _supabase != null) {
       try {
-        final res = await _supabase!.functions.invoke(
-          'send-whatsapp-report',
-          body: {
-            'action': 'test_connection',
-            'recipient_phone': cleanPhone,
-          },
+        return await sendConsolidatedReportToAdminNow(
+          targetPhone: cleanPhone,
+          date: DateTime.now(),
         );
-
-        if (res.data != null && res.data['success'] == true) {
-          return {
-            'success': true,
-            'status': res.data['status'] ?? 'sent',
-            'messageId': res.data['messageId'],
-            'message': res.data['message'] ?? 'Test WhatsApp message dispatched successfully via Meta Cloud API.',
-          };
-        } else {
-          return {
-            'success': false,
-            'error': res.data?['error'] ?? 'Test message delivery failed via Meta Cloud API.',
-          };
-        }
       } catch (e) {
         return {
           'success': false,
-          'error': 'Error invoking send-whatsapp-report backend function: $e',
+          'error': 'Error queuing WhatsApp report: $e',
         };
       }
     }

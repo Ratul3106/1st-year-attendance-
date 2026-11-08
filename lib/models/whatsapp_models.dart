@@ -297,7 +297,7 @@ class WhatsAppSettingsModel {
     this.deanPlacementPhone = '+919876543200',
     this.deanPlacementName = 'Dean of Placement and Training',
     this.adminName = 'Dr. Ramesh Sharma (Administrator)',
-    this.adminPhone = '+919876543200',
+    this.adminPhone = '+918072459331',
     this.reportScope = 'all',
     this.selectedClassIds = const [],
     this.includeComparisons = true,

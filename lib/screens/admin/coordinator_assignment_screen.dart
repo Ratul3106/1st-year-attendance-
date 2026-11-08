@@ -615,23 +615,27 @@ class _CoordinatorAssignmentScreenState
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.school_outlined, size: 48, color: AppColors.primary),
+                        const Icon(Icons.school_outlined,
+                            size: 48, color: AppColors.primary),
                         const SizedBox(height: 14),
                         const Text(
                           "No Classes Registered",
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                              fontSize: 18, fontWeight: FontWeight.bold),
                         ),
                         const SizedBox(height: 8),
                         const Text(
                           "Classes must be created in Class & Student Management before assigning coordinators and staff.",
                           textAlign: TextAlign.center,
-                          style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                          style: TextStyle(
+                              fontSize: 13, color: AppColors.textSecondary),
                         ),
                         const SizedBox(height: 20),
                         ElevatedButton.icon(
                           icon: const Icon(Icons.refresh, size: 16),
                           label: const Text("Refresh Classes"),
-                          style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+                          style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary),
                           onPressed: _loadData,
                         ),
                       ],

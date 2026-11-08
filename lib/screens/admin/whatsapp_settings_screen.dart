@@ -52,7 +52,7 @@ class _WhatsAppSettingsScreenState extends State<WhatsAppSettingsScreen>
   late TextEditingController _adminNameCtrl;
   late TextEditingController _adminPhoneCtrl;
   final TextEditingController _testPhoneCtrl =
-      TextEditingController(text: '+919876543200');
+      TextEditingController(text: '+918072459331');
 
   List<ClassModel> _allClasses = [];
   List<AuthorizedRecipient> _authorizedRecipients = [];
@@ -98,7 +98,7 @@ class _WhatsAppSettingsScreenState extends State<WhatsAppSettingsScreen>
             ? s.adminName
             : "Dr. Ramesh Sharma (Administrator)");
     _adminPhoneCtrl = TextEditingController(
-        text: s.adminPhone.isNotEmpty ? s.adminPhone : "+919876543200");
+        text: s.adminPhone.isNotEmpty ? s.adminPhone : "+918072459331");
 
     if (mounted) {
       setState(() {
@@ -172,9 +172,23 @@ class _WhatsAppSettingsScreenState extends State<WhatsAppSettingsScreen>
   }
 
   Future<void> _testConnection() async {
+    final phone = _testPhoneCtrl.text.trim();
+    if (phone.length < 10) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Please enter a valid WhatsApp phone number with country code."),
+          backgroundColor: AppColors.absent,
+        ),
+      );
+      return;
+    }
+
     setState(() => _isTesting = true);
-    final res =
-        await _service.testWhatsAppConnection(_testPhoneCtrl.text.trim());
+    final res = await _service.sendConsolidatedReportToAdminNow(
+      targetPhone: phone,
+      adminName: _adminNameCtrl.text.trim(),
+      date: DateTime.now(),
+    );
     if (!mounted) return;
     setState(() => _isTesting = false);
 
@@ -185,13 +199,12 @@ class _WhatsAppSettingsScreenState extends State<WhatsAppSettingsScreen>
           children: [
             Icon(
               res['success'] == true ? Icons.check_circle : Icons.error_outline,
-              color:
-                  res['success'] == true ? AppColors.present : AppColors.absent,
+              color: res['success'] == true ? AppColors.present : AppColors.absent,
             ),
             const SizedBox(width: 8),
             Text(res['success'] == true
-                ? "Test Connection Succeeded"
-                : "Test Connection Failed"),
+                ? "Test Report Queued"
+                : "Test Notice"),
           ],
         ),
         content: Column(
@@ -199,19 +212,19 @@ class _WhatsAppSettingsScreenState extends State<WhatsAppSettingsScreen>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              res['message'] ?? res['error'] ?? 'Connection test completed.',
+              res['message'] ?? 'Personal WhatsApp test completed.',
               style: const TextStyle(fontSize: 13),
             ),
-            if (res['messageId'] != null) ...[
-              const SizedBox(height: 8),
-              Text(
-                "Provider Message ID: ${res['messageId']}",
-                style: const TextStyle(
-                    fontSize: 11,
-                    color: AppColors.textSecondary,
-                    fontFamily: 'monospace'),
-              ),
-            ],
+            const SizedBox(height: 8),
+            Text(
+              "Destination: $phone",
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              "The personal WhatsApp worker daemon (whatsapp-service) will compile today's attendance summary, PDF report, and Excel workbook and send them to this number.",
+              style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+            ),
           ],
         ),
         actions: [
@@ -728,11 +741,11 @@ class _WhatsAppSettingsScreenState extends State<WhatsAppSettingsScreen>
           ),
           const SizedBox(height: 16),
           _card(
-            title: "Test WhatsApp Connection",
+            title: "Test WhatsApp Report Delivery",
             icon: Icons.send_to_mobile,
             children: [
               const Text(
-                "Send an instantaneous test message to verify that your Meta Cloud API connection, Phone Number ID, and token authorization are operating properly.",
+                "Trigger an on-demand test dispatch of today's attendance summary, PDF report, and Excel workbook via the personal WhatsApp worker daemon.",
                 style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
               ),
               const SizedBox(height: 12),

@@ -13,7 +13,8 @@ class NotificationDetailScreen extends StatefulWidget {
   const NotificationDetailScreen({super.key, required this.notification});
 
   @override
-  State<NotificationDetailScreen> createState() => _NotificationDetailScreenState();
+  State<NotificationDetailScreen> createState() =>
+      _NotificationDetailScreenState();
 }
 
 class _NotificationDetailScreenState extends State<NotificationDetailScreen> {
@@ -68,17 +69,17 @@ class _NotificationDetailScreenState extends State<NotificationDetailScreen> {
             ),
             const SizedBox(height: 6),
             Text(
-              DateFormat('EEEE, dd MMMM yyyy - hh:mm a').format(widget.notification.createdAt),
-              style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+              DateFormat('EEEE, dd MMMM yyyy - hh:mm a')
+                  .format(widget.notification.createdAt),
+              style:
+                  const TextStyle(color: AppColors.textSecondary, fontSize: 13),
             ),
             const Divider(height: 32),
-
             Text(
               widget.notification.message,
               style: const TextStyle(fontSize: 16, height: 1.4),
             ),
             const SizedBox(height: 32),
-
             if (_isLoading)
               const Center(child: CircularProgressIndicator())
             else if (_report != null)
@@ -91,7 +92,8 @@ class _NotificationDetailScreenState extends State<NotificationDetailScreen> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => DailyReportDetailScreen(report: _report!),
+                        builder: (_) =>
+                            DailyReportDetailScreen(report: _report!),
                       ),
                     );
                   },

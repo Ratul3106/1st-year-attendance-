@@ -23,11 +23,11 @@ class AdminService {
       return DemoDataService.instance.getAllClasses();
     }
     try {
-      final response = await _supabase!
-          .from('classes')
-          .select()
-          .order('created_at');
-      return (response as List).map((json) => ClassModel.fromJson(json)).toList();
+      final response =
+          await _supabase!.from('classes').select().order('created_at');
+      return (response as List)
+          .map((json) => ClassModel.fromJson(json))
+          .toList();
     } catch (e) {
       debugPrint("Error fetching classes: $e");
       return [];
@@ -55,12 +55,16 @@ class AdminService {
         createdAt: DateTime.now(),
       );
     }
-    final response = await _supabase!.from('classes').upsert({
-      'class_name': className,
-      'department': department,
-      'academic_year': academicYear,
-      'active': true,
-    }, onConflict: 'class_name, department, academic_year').select().single();
+    final response = await _supabase!
+        .from('classes')
+        .upsert({
+          'class_name': className,
+          'department': department,
+          'academic_year': academicYear,
+          'active': true,
+        }, onConflict: 'class_name, department, academic_year')
+        .select()
+        .single();
     return ClassModel.fromJson(response);
   }
 
@@ -70,7 +74,8 @@ class AdminService {
       return DemoDataService.instance.getAllStudents();
     }
     try {
-      final response = await _supabase!.from('students').select().order('register_number');
+      final response =
+          await _supabase!.from('students').select().order('register_number');
       return (response as List).map((json) => Student.fromJson(json)).toList();
     } catch (e) {
       debugPrint("Error fetching students: $e");
@@ -96,11 +101,15 @@ class AdminService {
         createdAt: DateTime.now(),
       );
     }
-    final response = await _supabase!.from('students').upsert({
-      'register_number': registerNumber,
-      'full_name': fullName,
-      'active': true,
-    }, onConflict: 'register_number').select().single();
+    final response = await _supabase!
+        .from('students')
+        .upsert({
+          'register_number': registerNumber,
+          'full_name': fullName,
+          'active': true,
+        }, onConflict: 'register_number')
+        .select()
+        .single();
     return Student.fromJson(response);
   }
 
@@ -189,8 +198,11 @@ class AdminService {
       return DemoDataService.instance.getAllUsers();
     }
     try {
-      final response = await _supabase!.from('profiles').select().order('full_name');
-      return (response as List).map((json) => UserProfile.fromJson(json)).toList();
+      final response =
+          await _supabase!.from('profiles').select().order('full_name');
+      return (response as List)
+          .map((json) => UserProfile.fromJson(json))
+          .toList();
     } catch (e) {
       debugPrint("Error fetching users: $e");
       return [];
@@ -216,10 +228,8 @@ class AdminService {
           .toList();
 
       if (coordIds.isNotEmpty) {
-        final profilesRes = await _supabase!
-            .from('profiles')
-            .select()
-            .inFilter('id', coordIds);
+        final profilesRes =
+            await _supabase!.from('profiles').select().inFilter('id', coordIds);
 
         for (final p in (profilesRes as List)) {
           final id = p['id'] as String;
@@ -233,7 +243,9 @@ class AdminService {
             role: UserRole.coordinator,
             email: email,
             active: p['active'] as bool? ?? true,
-            createdAt: p['created_at'] != null ? DateTime.parse(p['created_at']) : DateTime.now(),
+            createdAt: p['created_at'] != null
+                ? DateTime.parse(p['created_at'])
+                : DateTime.now(),
           ));
         }
       }
@@ -250,7 +262,8 @@ class AdminService {
         try {
           final m = jsonDecode(raw) as Map<String, dynamic>;
           final email = m['email'] as String?;
-          if (email != null && !list.any((u) => u.email?.toLowerCase() == email.toLowerCase())) {
+          if (email != null &&
+              !list.any((u) => u.email?.toLowerCase() == email.toLowerCase())) {
             list.add(UserProfile(
               id: m['id'] as String? ?? 'auth_${email.hashCode}',
               fullName: m['full_name'] as String? ?? email.split('@').first,
@@ -285,10 +298,8 @@ class AdminService {
           .toList();
 
       if (staffIds.isNotEmpty) {
-        final profilesRes = await _supabase!
-            .from('profiles')
-            .select()
-            .inFilter('id', staffIds);
+        final profilesRes =
+            await _supabase!.from('profiles').select().inFilter('id', staffIds);
 
         for (final p in (profilesRes as List)) {
           final id = p['id'] as String;
@@ -302,7 +313,9 @@ class AdminService {
             role: UserRole.staff,
             email: email,
             active: p['active'] as bool? ?? true,
-            createdAt: p['created_at'] != null ? DateTime.parse(p['created_at']) : DateTime.now(),
+            createdAt: p['created_at'] != null
+                ? DateTime.parse(p['created_at'])
+                : DateTime.now(),
           ));
         }
       }
@@ -319,7 +332,8 @@ class AdminService {
         try {
           final m = jsonDecode(raw) as Map<String, dynamic>;
           final email = m['email'] as String?;
-          if (email != null && !list.any((u) => u.email?.toLowerCase() == email.toLowerCase())) {
+          if (email != null &&
+              !list.any((u) => u.email?.toLowerCase() == email.toLowerCase())) {
             list.add(UserProfile(
               id: m['id'] as String? ?? 'auth_${email.hashCode}',
               fullName: m['full_name'] as String? ?? email.split('@').first,
@@ -356,14 +370,17 @@ class AdminService {
         : normalized.split('@').first;
 
     String? matchedProfileId;
-    if (normalized == 'coordinator@college.edu' || normalized.startsWith('coordinator')) {
+    if (normalized == 'coordinator@college.edu' ||
+        normalized.startsWith('coordinator')) {
       matchedProfileId = '3df7855a-8e9c-44aa-823f-51c94cb5a33c';
     } else {
       try {
         final allProfiles = await _supabase!.from('profiles').select();
         for (final p in (allProfiles as List)) {
           final pName = (p['full_name'] as String? ?? '').toLowerCase();
-          if (pName == normalized || pName == name.toLowerCase() || p['id'] == normalized) {
+          if (pName == normalized ||
+              pName == name.toLowerCase() ||
+              p['id'] == normalized) {
             matchedProfileId = p['id'] as String;
             break;
           }
@@ -387,7 +404,8 @@ class AdminService {
       final key = 'auth_coordinators_$classId';
       final currentList = prefs.getStringList(key) ?? [];
       final entry = jsonEncode({
-        'id': matchedProfileId ?? 'auth_${DateTime.now().millisecondsSinceEpoch}',
+        'id':
+            matchedProfileId ?? 'auth_${DateTime.now().millisecondsSinceEpoch}',
         'email': normalized,
         'full_name': name,
         'role': 'coordinator',
@@ -425,14 +443,17 @@ class AdminService {
         : normalized.split('@').first;
 
     String? matchedProfileId;
-    if (normalized == 'staff.attendance@gmail.com' || normalized.startsWith('staff')) {
+    if (normalized == 'staff.attendance@gmail.com' ||
+        normalized.startsWith('staff')) {
       matchedProfileId = '88b40d1d-d10f-45b0-a618-a71cf0a28f15';
     } else {
       try {
         final allProfiles = await _supabase!.from('profiles').select();
         for (final p in (allProfiles as List)) {
           final pName = (p['full_name'] as String? ?? '').toLowerCase();
-          if (pName == normalized || pName == name.toLowerCase() || p['id'] == normalized) {
+          if (pName == normalized ||
+              pName == name.toLowerCase() ||
+              p['id'] == normalized) {
             matchedProfileId = p['id'] as String;
             break;
           }
@@ -456,7 +477,8 @@ class AdminService {
       final key = 'auth_staff_$classId';
       final currentList = prefs.getStringList(key) ?? [];
       final entry = jsonEncode({
-        'id': matchedProfileId ?? 'auth_${DateTime.now().millisecondsSinceEpoch}',
+        'id':
+            matchedProfileId ?? 'auth_${DateTime.now().millisecondsSinceEpoch}',
         'email': normalized,
         'full_name': name,
         'role': 'staff',
