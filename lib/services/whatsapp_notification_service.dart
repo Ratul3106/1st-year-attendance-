@@ -337,8 +337,31 @@ class WhatsAppNotificationService {
       };
     }
 
-    // Try invoking the backend Supabase Edge Function if live
+    // 1. Direct PostgreSQL RPC to generate report and queue for the personal WhatsApp worker
     if (!SupabaseConfig.isDemoMode && _supabase != null) {
+      try {
+        final rpcRes = await _supabase!.rpc(
+          'generate_consolidated_daily_report',
+          params: {
+            'p_date': dateStr,
+            'p_admin_phone': phone,
+          },
+        );
+        if (rpcRes != null && rpcRes['success'] == true) {
+          return {
+            'success': true,
+            'message':
+                'Consolidated report successfully queued for Admin ($phone). The personal WhatsApp worker will compile and deliver the text summary, PDF, and Excel attachments.',
+            'outboxId': rpcRes['outbox_id'],
+            'totalClasses': rpcRes['classes_count'],
+            'recipientPhone': rpcRes['recipient_phone'],
+          };
+        }
+      } catch (e) {
+        debugPrint('[WhatsAppService] RPC generate_consolidated_daily_report notice: $e');
+      }
+
+      // 2. Fallback to Edge function if RPC not available directly
       try {
         final res = await _supabase!.functions.invoke(
           'daily-attendance-report-job',

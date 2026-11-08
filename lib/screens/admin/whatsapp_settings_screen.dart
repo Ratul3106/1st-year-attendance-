@@ -605,13 +605,61 @@ class _WhatsAppSettingsScreenState extends State<WhatsAppSettingsScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _banner(
-            "Meta WhatsApp Business Cloud API Configuration",
-            "Configure your official Meta Cloud API credentials and verify live message delivery.",
+            "Personal WhatsApp Attendance Automation Active",
+            "Attendance reports with PDF & Excel attachments are automated via your personal WhatsApp daemon.",
             Icons.verified,
           ),
           const SizedBox(height: 16),
           _card(
-            title: "Meta API Credentials",
+            title: "Personal WhatsApp Worker (Active Sender)",
+            icon: Icons.chat_bubble_outline,
+            children: [
+              const Text(
+                "Personal WhatsApp automation is powered by the whatsapp-service daemon using whatsapp-web.js. Daily attendance reports (text summary, PDF document, and Excel spreadsheet) are sent directly to the administrator.",
+                style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.present.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                      color: AppColors.present.withValues(alpha: 0.3)),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.check_circle,
+                        color: AppColors.present, size: 22),
+                    SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "Personal WhatsApp Worker Ready",
+                            style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                                color: AppColors.present),
+                          ),
+                          SizedBox(height: 2),
+                          Text(
+                            "LocalAuth session persistence enabled. Automated schedule fires Monday–Saturday at 2:00 PM IST (14:00) with instant test dispatch support.",
+                            style: TextStyle(
+                                fontSize: 11, color: AppColors.textSecondary),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _card(
+            title: "Meta API Credentials (Legacy / Cloud API)",
             icon: Icons.vpn_key_outlined,
             children: [
               TextField(

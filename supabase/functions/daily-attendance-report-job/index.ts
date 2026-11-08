@@ -72,51 +72,12 @@ serve(async (req) => {
 
     const reportMessageText = reportResult.message_text || reportResult;
     const reportId = reportResult.report_id || null;
+    const outboxId = reportResult.outbox_id || null;
 
-    // Queue the report for the administrator
-    const outboxId = crypto.randomUUID();
-    const logId = crypto.randomUUID();
-    const idempotencyKey = `auto_rpt_admin_${targetDate}_${reportType}`;
+    // generate_consolidated_daily_report() already inserts the single outbox record
+    // and audit log with atomic deduplication. Do not insert a duplicate.
 
-    await supabase.from("whatsapp_outbox").insert({
-      id: outboxId,
-      notification_type: reportType === "final" ? "daily_report_final" : "daily_report_preliminary",
-      recipient_phone: config.admin_phone,
-      recipient_name: config.admin_name || "Administrator",
-      recipient_role: "Administrator",
-      template_name: config.report_template_name || "attendance_daily_report",
-      template_parameters: [reportMessageText],
-      payload: {
-        report_id: reportId,
-        report_date: targetDate,
-        report_type: reportType,
-        message_text: reportMessageText,
-      },
-      status: "queued",
-      idempotency_key: idempotencyKey,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    });
-
-    // Insert delivery log for monitoring
-    await supabase.from("whatsapp_notification_logs").insert({
-      id: logId,
-      outbox_id: outboxId,
-      report_id: reportId,
-      recipient_id: null,
-      class_id: null,
-      report_date: targetDate,
-      report_type_label: `${reportType.toUpperCase()} Daily Report`,
-      notification_type: "attendance_report",
-      recipient_phone: config.admin_phone,
-      recipient_name: config.admin_name || "Administrator",
-      recipient_role: "Administrator",
-      status: "queued",
-      scheduled_time: config.report_time || "14:00 IST",
-      created_at: new Date().toISOString(),
-    });
-
-    // Trigger whatsapp-worker to dispatch the queued admin report
+    // Trigger whatsapp-worker fallback if configured
     try {
       await supabase.functions.invoke("whatsapp-worker");
     } catch (e) {

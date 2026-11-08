@@ -1,11 +1,13 @@
 {
   "name": "whatsapp-service",
   "version": "1.0.0",
+  "type": "module",
   "description": "",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node src/index.js",
+    "send-now": "node send-now.js",
     "dev": "node --watch src/index.js"
   },
   "keywords": [],
@@ -19,5 +21,6 @@
     "pdfkit": "^0.20.2",
     "qrcode-terminal": "^0.12.0",
     "whatsapp-web.js": "^1.34.7"
-  }
+  },
+  "devDependencies": {}
 }
