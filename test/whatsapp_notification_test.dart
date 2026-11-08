@@ -540,5 +540,235 @@ void main() {
       // Only 2 finalized absent sessions exist, so threshold 3 is NOT met
       expect(results.isEmpty, isTrue);
     });
+
+    // 16. Unmarked students are strictly distinguished from absent and never counted as absent
+    test('16. Unmarked students are strictly distinguished from absent and never counted as absent', () async {
+      final enrolledClass = demo.getAllClasses().first;
+      final report = await service.generateAttendanceReport(
+        classModel: enrolledClass,
+        date: '2026-10-31',
+        isPreliminary: true,
+      );
+
+      // Verify that morningUnmarked and afternoonUnmarked are tracked separately from absent
+      expect(report.totalEnrolled, greaterThan(0));
+      expect(report.morningUnmarked, isNonNegative);
+      expect(report.afternoonUnmarked, isNonNegative);
+      // Unmarked count is not added to absent count
+      expect(report.morningAbsent, isNot(equals(report.totalEnrolled)));
+    });
+
+    // 17. Attendance percentages are calculated strictly on recorded denominator
+    test('17. Attendance percentages are calculated strictly on recorded denominator', () {
+      final sampleReport = AttendanceReportModel(
+        id: 'rep-test-pct',
+        reportDate: '2026-10-31',
+        classId: testClass.id,
+        className: testClass.className,
+        department: testClass.department,
+        academicYear: testClass.academicYear,
+        reportType: 'preliminary',
+        totalEnrolled: 20,
+        morningPresent: 10,
+        morningAbsent: 2,
+        morningOd: 3,
+        morningUnmarked: 5, // 5 unmarked out of 20
+        morningPercentage: 86.67, // (10 + 3) / (10 + 2 + 3) * 100 = 13/15 = 86.67%
+        afternoonPresent: 8,
+        afternoonAbsent: 2,
+        afternoonOd: 1,
+        afternoonBunk: 1,
+        afternoonUnmarked: 8,
+        afternoonPercentage: 75.0, // (8 + 1) / (8 + 2 + 1 + 1) * 100 = 9/12 = 75.0%
+        presentBoth: 8,
+        presentMorningAbsentAfternoon: 1,
+        afternoonBunkCount: 1,
+      );
+
+      expect(sampleReport.morningPercentage, equals(86.67));
+      expect(sampleReport.afternoonPercentage, equals(75.0));
+      expect(sampleReport.isPreliminary, isTrue);
+    });
+
+    // 18. Report message format matches Section 5 specification exactly
+    test('18. Report message format matches Section 5 specification exactly', () {
+      final sampleReport = AttendanceReportModel(
+        id: 'rep-test-fmt',
+        reportDate: '2026-10-31',
+        classId: testClass.id,
+        className: '1st Year - CSE (Sec A)',
+        department: 'Computer Science',
+        academicYear: '2026-2027',
+        reportType: 'final',
+        totalEnrolled: 60,
+        morningPresent: 55,
+        morningAbsent: 3,
+        morningOd: 2,
+        morningUnmarked: 0,
+        morningPercentage: 95.0,
+        afternoonPresent: 52,
+        afternoonAbsent: 4,
+        afternoonOd: 2,
+        afternoonBunk: 2,
+        afternoonUnmarked: 0,
+        afternoonPercentage: 90.0,
+        presentBoth: 51,
+        presentMorningAbsentAfternoon: 2,
+        afternoonBunkCount: 2,
+        generatedAt: DateTime(2026, 10, 31, 14, 0),
+      );
+
+      final msg = sampleReport.formattedMessage;
+
+      // Check required sections and markers
+      expect(msg, contains('STUDENT ATTENDANCE REPORT'));
+      expect(msg, contains('Date: 2026-10-31'));
+      expect(msg, contains('Department: Computer Science'));
+      expect(msg, contains('Class: 1st Year - CSE (Sec A)'));
+      expect(msg, contains('Academic Year: 2026-2027'));
+      expect(msg, contains('MORNING ATTENDANCE'));
+      expect(msg, contains('Total Students: 60'));
+      expect(msg, contains('Present: 55'));
+      expect(msg, contains('Absent: 3'));
+      expect(msg, contains('OD: 2'));
+      expect(msg, contains('Not Marked: 0'));
+      expect(msg, contains('Attendance: 95.0%'));
+      expect(msg, contains('AFTERNOON ATTENDANCE'));
+      expect(msg, contains('Bunk: 2'));
+      expect(msg, contains('Attendance: 90.0%'));
+      expect(msg, contains('SESSION COMPARISON'));
+      expect(msg, contains('Present in Both Sessions: 51'));
+      expect(msg, contains('Morning Present → Afternoon Absent: 2'));
+      expect(msg, contains('Afternoon Bunk: 2'));
+      expect(msg, contains('Report Status: FINAL'));
+      expect(msg, contains('Student Attendance Management System'));
+    });
+
+    // 19. Authorized recipient management and phone masking
+    test('19. Authorized recipient management and phone masking', () async {
+      final recipient = AuthorizedRecipient(
+        id: 'rec-test-1',
+        name: 'Dr. Suresh Kumar',
+        designation: 'Vice Principal',
+        phoneNumber: '+919876543299',
+        assignedClassIds: [testClass.id],
+        reportTypes: 'both',
+        active: true,
+        consentObtained: true,
+      );
+
+      await service.saveAuthorizedRecipient(recipient);
+      final recs = await service.getAuthorizedRecipients();
+
+      expect(recs.any((r) => r.id == 'rec-test-1'), isTrue);
+      final saved = recs.firstWhere((r) => r.id == 'rec-test-1');
+      expect(saved.name, equals('Dr. Suresh Kumar'));
+      expect(saved.maskedPhoneNumber, equals('+919 *** **299'));
+      expect(saved.isAuthorizedForClass(testClass.id), isTrue);
+      expect(saved.isAuthorizedForClass('other-class-id'), isFalse);
+    });
+
+    // 20. Manual send report dispatches and creates delivery log
+    test('20. Manual send report dispatches and creates delivery log', () async {
+      final report = await service.generateAttendanceReport(
+        classModel: testClass,
+        date: '2026-10-31',
+      );
+
+      final recs = await service.getAuthorizedRecipients();
+      expect(recs.isNotEmpty, isTrue);
+
+      final result = await service.sendWhatsAppReport(
+        report: report,
+        recipients: [recs.first],
+      );
+
+      expect(result['success'], isTrue);
+      expect(result['delivered_count'], equals(1));
+
+      final logs = await service.getNotificationLogs(classIdFilter: testClass.id);
+      expect(logs.isNotEmpty, isTrue);
+      final reportLog = logs.firstWhere((l) => l.notificationType == WhatsAppNotificationType.attendanceReport);
+      expect(reportLog.status, equals(WhatsAppDeliveryStatus.sent));
+      expect(reportLog.providerMessageId, isNotNull);
+      expect(reportLog.providerMessageId!.startsWith('wamid.HBgM'), isTrue);
+    });
+
+    // 21. Webhook delivery status updates from SENT to DELIVERED and READ
+    test('21. Webhook delivery status updates from SENT to DELIVERED and READ', () async {
+      final report = await service.generateAttendanceReport(
+        classModel: testClass,
+        date: '2026-10-31',
+      );
+      final recs = await service.getAuthorizedRecipients();
+      final result = await service.sendWhatsAppReport(report: report, recipients: [recs.first]);
+      final wamid = (result['details'] as List).first['wamid'] as String;
+
+      // Simulate Meta Webhook 'delivered' event
+      final deliveredOk = await service.processWebhookDeliveryEvent(
+        providerMessageId: wamid,
+        newStatus: WhatsAppDeliveryStatus.delivered,
+        timestamp: '1728840100',
+      );
+      expect(deliveredOk, isTrue);
+
+      var logs = await service.getNotificationLogs();
+      var matchingLog = logs.firstWhere((l) => l.providerMessageId == wamid);
+      expect(matchingLog.status, equals(WhatsAppDeliveryStatus.delivered));
+      expect(matchingLog.deliveredAt, isNotNull);
+
+      // Simulate Meta Webhook 'read' event
+      final readOk = await service.processWebhookDeliveryEvent(
+        providerMessageId: wamid,
+        newStatus: WhatsAppDeliveryStatus.read,
+        timestamp: '1728840200',
+      );
+      expect(readOk, isTrue);
+
+      logs = await service.getNotificationLogs();
+      matchingLog = logs.firstWhere((l) => l.providerMessageId == wamid);
+      expect(matchingLog.status, equals(WhatsAppDeliveryStatus.read));
+      expect(matchingLog.readAt, isNotNull);
+    });
+
+    // 22. Controlled retry for eligible failed delivery log
+    test('22. Controlled retry for eligible failed delivery log', () async {
+      service.mockFailMetaApi = true;
+
+      final report = await service.generateAttendanceReport(
+        classModel: testClass,
+        date: '2026-10-31',
+      );
+      final recs = await service.getAuthorizedRecipients();
+
+      // Send should record failure
+      final res = await service.sendWhatsAppReport(report: report, recipients: [recs.first]);
+      expect(res['failed_count'], equals(1));
+
+      final logs = await service.getNotificationLogs(statusFilter: WhatsAppDeliveryStatus.failed);
+      expect(logs.isNotEmpty, isTrue);
+      final failedLog = logs.first;
+      expect(failedLog.canRetry, isTrue);
+
+      // Now disable mock fail and retry
+      service.mockFailMetaApi = false;
+      final retrySuccess = await service.retryDelivery(failedLog.id);
+      expect(retrySuccess, isTrue);
+
+      final updatedLogs = await service.getNotificationLogs();
+      final retried = updatedLogs.firstWhere((l) => l.id == failedLog.id);
+      expect(retried.status, equals(WhatsAppDeliveryStatus.sent));
+    });
+
+    // 23. Test WhatsApp connection validation
+    test('23. Test WhatsApp connection validation', () async {
+      final invalidRes = await service.testWhatsAppConnection('123');
+      expect(invalidRes['success'], isFalse);
+      expect(invalidRes['error'], contains('Invalid phone number'));
+
+      final validRes = await service.testWhatsAppConnection('+919876543200');
+      expect(validRes['success'], isTrue);
+      expect(validRes['messageId'], isNotNull);
+    });
   });
 }

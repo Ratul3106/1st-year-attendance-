@@ -45,6 +45,7 @@ class DemoDataService {
       id: 'demo-admin-id',
       fullName: 'Dr. Ramesh Sharma (Admin)',
       role: UserRole.admin,
+      email: 'admin@college.edu',
       active: true,
       createdAt: now.subtract(const Duration(days: 30)),
     );
@@ -53,6 +54,7 @@ class DemoDataService {
       id: 'demo-coord-id',
       fullName: 'Prof. Priya Nair (Coordinator)',
       role: UserRole.coordinator,
+      email: 'coordinator@college.edu',
       active: true,
       createdAt: now.subtract(const Duration(days: 30)),
     );
@@ -61,6 +63,7 @@ class DemoDataService {
       id: 'demo-staff-id',
       fullName: 'Prof. Amit Patel (HOD / Staff)',
       role: UserRole.staff,
+      email: 'staff@college.edu',
       active: true,
       createdAt: now.subtract(const Duration(days: 30)),
     );
@@ -536,6 +539,14 @@ class DemoDataService {
 
   List<UserProfile> getAllUsers() => List.unmodifiable(_users);
 
+  List<UserProfile> getAssignedCoordinators(String classId) {
+    return _users.where((u) => _coordinatorClassesMap[u.id]?.contains(classId) == true).toList();
+  }
+
+  List<UserProfile> getAssignedStaff(String classId) {
+    return _users.where((u) => _staffClassesMap[u.id]?.contains(classId) == true).toList();
+  }
+
   void assignCoordinatorToClass({required String classId, required String coordinatorId}) {
     final list = _coordinatorClassesMap.putIfAbsent(coordinatorId, () => []);
     if (!list.contains(classId)) list.add(classId);
@@ -544,6 +555,80 @@ class DemoDataService {
   void assignStaffToClass({required String classId, required String staffId}) {
     final list = _staffClassesMap.putIfAbsent(staffId, () => []);
     if (!list.contains(classId)) list.add(classId);
+  }
+
+  void assignCoordinatorByEmail({
+    required String classId,
+    required String email,
+    String? fullName,
+  }) {
+    final normalized = email.trim().toLowerCase();
+    var user = _users.cast<UserProfile?>().firstWhere(
+      (u) => u?.email?.toLowerCase() == normalized,
+      orElse: () => null,
+    );
+
+    if (user == null) {
+      final name = fullName?.trim().isNotEmpty == true
+          ? fullName!.trim()
+          : normalized.split('@').first;
+      user = UserProfile(
+        id: 'user-coord-${DateTime.now().millisecondsSinceEpoch}',
+        fullName: name,
+        role: UserRole.coordinator,
+        email: normalized,
+        active: true,
+        createdAt: DateTime.now(),
+      );
+      _users.add(user);
+    }
+
+    final list = _coordinatorClassesMap.putIfAbsent(user.id, () => []);
+    if (!list.contains(classId)) list.add(classId);
+  }
+
+  void assignStaffByEmail({
+    required String classId,
+    required String email,
+    String? fullName,
+  }) {
+    final normalized = email.trim().toLowerCase();
+    var user = _users.cast<UserProfile?>().firstWhere(
+      (u) => u?.email?.toLowerCase() == normalized,
+      orElse: () => null,
+    );
+
+    if (user == null) {
+      final name = fullName?.trim().isNotEmpty == true
+          ? fullName!.trim()
+          : normalized.split('@').first;
+      user = UserProfile(
+        id: 'user-staff-${DateTime.now().millisecondsSinceEpoch}',
+        fullName: name,
+        role: UserRole.staff,
+        email: normalized,
+        active: true,
+        createdAt: DateTime.now(),
+      );
+      _users.add(user);
+    }
+
+    final list = _staffClassesMap.putIfAbsent(user.id, () => []);
+    if (!list.contains(classId)) list.add(classId);
+  }
+
+  void removeCoordinatorFromClass({
+    required String classId,
+    required String coordinatorId,
+  }) {
+    _coordinatorClassesMap[coordinatorId]?.remove(classId);
+  }
+
+  void removeStaffFromClass({
+    required String classId,
+    required String staffId,
+  }) {
+    _staffClassesMap[staffId]?.remove(classId);
   }
 
   // --- Notifications Service Methods ---

@@ -7,6 +7,7 @@ import 'package:student_attendance_system/models/attendance_record.dart';
 import 'package:student_attendance_system/services/attendance_service.dart';
 import 'package:student_attendance_system/widgets/student_attendance_tile.dart';
 import 'package:student_attendance_system/widgets/custom_button.dart';
+import 'package:student_attendance_system/widgets/college_logo.dart';
 
 class MorningAttendanceScreen extends StatefulWidget {
   final ClassModel selectedClass;
@@ -286,7 +287,20 @@ class _MorningAttendanceScreenState extends State<MorningAttendanceScreen> {
       },
       child: Scaffold(
         appBar: AppBar(
-          title: Text("Morning Attendance — ${widget.selectedClass.className}"),
+          titleSpacing: 12,
+          title: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CollegeLogo(height: 32),
+              const SizedBox(width: 10),
+              Flexible(
+                child: Text(
+                  "Morning Attendance — ${widget.selectedClass.className}",
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
           actions: [
             TextButton.icon(
               icon: const Icon(Icons.done_all, size: 18, color: Colors.white),

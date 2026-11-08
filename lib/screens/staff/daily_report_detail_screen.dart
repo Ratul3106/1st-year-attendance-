@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:student_attendance_system/core/constants/app_colors.dart';
 import 'package:student_attendance_system/models/daily_report.dart';
 import 'package:student_attendance_system/widgets/discrepancy_badge.dart';
+import 'package:student_attendance_system/widgets/college_logo.dart';
 
 class DailyReportDetailScreen extends StatelessWidget {
   final DailyReport report;
@@ -13,7 +14,20 @@ class DailyReportDetailScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Daily Report Details"),
+        titleSpacing: 12,
+        title: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CollegeLogo(height: 32),
+            SizedBox(width: 10),
+            Flexible(
+              child: Text(
+                "Daily Report Details",
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),

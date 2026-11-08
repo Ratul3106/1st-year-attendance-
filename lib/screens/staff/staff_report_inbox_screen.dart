@@ -11,6 +11,7 @@ import 'package:student_attendance_system/screens/staff/notification_detail_scre
 import 'package:student_attendance_system/screens/staff/daily_report_detail_screen.dart';
 import 'package:student_attendance_system/screens/profile/user_profile_screen.dart';
 import 'package:student_attendance_system/screens/auth/login_screen.dart';
+import 'package:student_attendance_system/widgets/college_logo.dart';
 
 class StaffReportInboxScreen extends StatefulWidget {
   const StaffReportInboxScreen({super.key});
@@ -81,7 +82,20 @@ class _StaffReportInboxScreenState extends State<StaffReportInboxScreen> with Si
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Staff Dashboard"),
+        titleSpacing: 12,
+        title: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CollegeLogo(height: 36),
+            SizedBox(width: 12),
+            Flexible(
+              child: Text(
+                "Staff Dashboard",
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
         bottom: TabBar(
           controller: _tabController,
           labelColor: Colors.white,

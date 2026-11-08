@@ -7,6 +7,7 @@ import 'package:student_attendance_system/models/attendance_record.dart';
 import 'package:student_attendance_system/services/attendance_service.dart';
 import 'package:student_attendance_system/widgets/student_attendance_tile.dart';
 import 'package:student_attendance_system/widgets/custom_button.dart';
+import 'package:student_attendance_system/widgets/college_logo.dart';
 
 class AfternoonAttendanceScreen extends StatefulWidget {
   final ClassModel selectedClass;
@@ -19,7 +20,8 @@ class AfternoonAttendanceScreen extends StatefulWidget {
   });
 
   @override
-  State<AfternoonAttendanceScreen> createState() => _AfternoonAttendanceScreenState();
+  State<AfternoonAttendanceScreen> createState() =>
+      _AfternoonAttendanceScreenState();
 }
 
 class _AfternoonAttendanceScreenState extends State<AfternoonAttendanceScreen> {
@@ -46,7 +48,8 @@ class _AfternoonAttendanceScreenState extends State<AfternoonAttendanceScreen> {
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
     try {
-      final students = await _attendanceService.getEnrolledStudents(widget.selectedClass.id);
+      final students =
+          await _attendanceService.getEnrolledStudents(widget.selectedClass.id);
 
       // Fetch morning session records to allow cross-comparison review
       final morningSession = await _attendanceService.getOrCreateSession(
@@ -54,7 +57,8 @@ class _AfternoonAttendanceScreenState extends State<AfternoonAttendanceScreen> {
         date: widget.date,
         sessionType: SessionType.morning,
       );
-      final morningRecords = await _attendanceService.getSessionRecords(morningSession.id);
+      final morningRecords =
+          await _attendanceService.getSessionRecords(morningSession.id);
       Map<String, AttendanceStatus> mMap = {};
       for (var r in morningRecords) {
         mMap[r.studentId] = r.status;
@@ -67,7 +71,8 @@ class _AfternoonAttendanceScreenState extends State<AfternoonAttendanceScreen> {
         sessionType: SessionType.afternoon,
       );
 
-      final existingRecords = await _attendanceService.getSessionRecords(session.id);
+      final existingRecords =
+          await _attendanceService.getSessionRecords(session.id);
       Map<String, AttendanceStatus> initialMap = {};
       for (var rec in existingRecords) {
         initialMap[rec.studentId] = rec.status;
@@ -102,17 +107,21 @@ class _AfternoonAttendanceScreenState extends State<AfternoonAttendanceScreen> {
     });
   }
 
-  int get _presentCount =>
-      _attendanceState.values.where((status) => status == AttendanceStatus.present).length;
+  int get _presentCount => _attendanceState.values
+      .where((status) => status == AttendanceStatus.present)
+      .length;
 
-  int get _absentCount =>
-      _attendanceState.values.where((status) => status == AttendanceStatus.absent).length;
+  int get _absentCount => _attendanceState.values
+      .where((status) => status == AttendanceStatus.absent)
+      .length;
 
-  int get _odCount =>
-      _attendanceState.values.where((status) => status == AttendanceStatus.od).length;
+  int get _odCount => _attendanceState.values
+      .where((status) => status == AttendanceStatus.od)
+      .length;
 
-  int get _bunkCount =>
-      _attendanceState.values.where((status) => status == AttendanceStatus.bunk).length;
+  int get _bunkCount => _attendanceState.values
+      .where((status) => status == AttendanceStatus.bunk)
+      .length;
 
   int get _unmarkedCount => _allStudents.length - _attendanceState.length;
 
@@ -134,20 +143,22 @@ class _AfternoonAttendanceScreenState extends State<AfternoonAttendanceScreen> {
 
   void _reviewAndSubmit() {
     // Calculate morning vs afternoon shifts for review
-    int mP_aBunk = 0;
-    int mP_aA = 0;
-    int mP_aOd = 0;
-    int mA_aP = 0;
-    int mOd_aP = 0;
+    int mpAbunk = 0;
+    int mpAa = 0;
+    int mpAod = 0;
+    int maAp = 0;
+    int modAp = 0;
 
     for (final s in _allStudents) {
       final m = _morningAttendanceMap[s.id];
       final a = _attendanceState[s.id];
-      if (m == AttendanceStatus.present && a == AttendanceStatus.bunk) mP_aBunk++;
-      if (m == AttendanceStatus.present && a == AttendanceStatus.absent) mP_aA++;
-      if (m == AttendanceStatus.present && a == AttendanceStatus.od) mP_aOd++;
-      if (m == AttendanceStatus.absent && a == AttendanceStatus.present) mA_aP++;
-      if (m == AttendanceStatus.od && a == AttendanceStatus.present) mOd_aP++;
+      if (m == AttendanceStatus.present && a == AttendanceStatus.bunk) {
+        mpAbunk++;
+      }
+      if (m == AttendanceStatus.present && a == AttendanceStatus.absent) mpAa++;
+      if (m == AttendanceStatus.present && a == AttendanceStatus.od) mpAod++;
+      if (m == AttendanceStatus.absent && a == AttendanceStatus.present) maAp++;
+      if (m == AttendanceStatus.od && a == AttendanceStatus.present) modAp++;
     }
 
     showDialog(
@@ -169,7 +180,8 @@ class _AfternoonAttendanceScreenState extends State<AfternoonAttendanceScreen> {
               children: [
                 Text(
                   widget.selectedClass.displayName,
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold, fontSize: 13),
                 ),
                 const SizedBox(height: 12),
                 Container(
@@ -181,36 +193,51 @@ class _AfternoonAttendanceScreenState extends State<AfternoonAttendanceScreen> {
                   ),
                   child: Column(
                     children: [
-                      _reviewRow("Total Enrolled:", "${_allStudents.length}", AppColors.textPrimary),
+                      _reviewRow("Total Enrolled:", "${_allStudents.length}",
+                          AppColors.textPrimary),
                       const Divider(height: 12),
-                      _reviewRow("Present (P):", "$_presentCount", AppColors.present),
+                      _reviewRow(
+                          "Present (P):", "$_presentCount", AppColors.present),
                       const Divider(height: 12),
-                      _reviewRow("Absent (A):", "$_absentCount", AppColors.absent),
+                      _reviewRow(
+                          "Absent (A):", "$_absentCount", AppColors.absent),
                       const Divider(height: 12),
                       _reviewRow("On Duty (OD):", "$_odCount", AppColors.od),
                       const Divider(height: 12),
                       _reviewRow("Bunk (B):", "$_bunkCount", AppColors.bunk),
                       const Divider(height: 12),
-                      _reviewRow("Unmarked:", "$_unmarkedCount", _unmarkedCount > 0 ? AppColors.absent : AppColors.unmarked),
+                      _reviewRow(
+                          "Unmarked:",
+                          "$_unmarkedCount",
+                          _unmarkedCount > 0
+                              ? AppColors.absent
+                              : AppColors.unmarked),
                     ],
                   ),
                 ),
                 const SizedBox(height: 14),
                 const Text(
                   "Session Shift Highlights:",
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppColors.textPrimary),
+                  style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                      color: AppColors.textPrimary),
                 ),
                 const SizedBox(height: 6),
-                _shiftChip("Morning Present → Afternoon Bunk: $mP_aBunk", AppColors.bunk, AppColors.bunkLight),
+                _shiftChip("Morning Present → Afternoon Bunk: $mpAbunk",
+                    AppColors.bunk, AppColors.bunkLight),
                 const SizedBox(height: 4),
-                _shiftChip("Morning Present → Afternoon Absent: $mP_aA", AppColors.absent, AppColors.absentLight),
+                _shiftChip("Morning Present → Afternoon Absent: $mpAa",
+                    AppColors.absent, AppColors.absentLight),
                 const SizedBox(height: 4),
-                _shiftChip("Morning Present → Afternoon OD: $mP_aOd", AppColors.od, AppColors.odLight),
+                _shiftChip("Morning Present → Afternoon OD: $mpAod",
+                    AppColors.od, AppColors.odLight),
                 const SizedBox(height: 4),
-                _shiftChip("Morning Absent → Afternoon Present: $mA_aP", AppColors.info, AppColors.infoLight),
+                _shiftChip("Morning Absent → Afternoon Present: $maAp",
+                    AppColors.info, AppColors.infoLight),
                 const SizedBox(height: 4),
-                _shiftChip("Morning OD → Afternoon Present: $mOd_aP", AppColors.info, AppColors.infoLight),
-
+                _shiftChip("Morning OD → Afternoon Present: $modAp",
+                    AppColors.info, AppColors.infoLight),
                 if (_unmarkedCount > 0) ...[
                   const SizedBox(height: 12),
                   Container(
@@ -221,12 +248,14 @@ class _AfternoonAttendanceScreenState extends State<AfternoonAttendanceScreen> {
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.warning_amber_rounded, size: 18, color: AppColors.warning),
+                        const Icon(Icons.warning_amber_rounded,
+                            size: 18, color: AppColors.warning),
                         const SizedBox(width: 6),
                         Expanded(
                           child: Text(
                             "$_unmarkedCount students remain unmarked. Incomplete records will be flagged in reports.",
-                            style: const TextStyle(fontSize: 12, color: AppColors.warning),
+                            style: const TextStyle(
+                                fontSize: 12, color: AppColors.warning),
                           ),
                         ),
                       ],
@@ -264,7 +293,8 @@ class _AfternoonAttendanceScreenState extends State<AfternoonAttendanceScreen> {
       ),
       child: Text(
         text,
-        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: textColor),
+        style: TextStyle(
+            fontSize: 11, fontWeight: FontWeight.w600, color: textColor),
       ),
     );
   }
@@ -285,7 +315,8 @@ class _AfternoonAttendanceScreenState extends State<AfternoonAttendanceScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text("Afternoon attendance saved successfully! Final reports generated."),
+            content: Text(
+                "Afternoon attendance saved successfully! Final reports generated."),
             backgroundColor: AppColors.present,
           ),
         );
@@ -305,10 +336,13 @@ class _AfternoonAttendanceScreenState extends State<AfternoonAttendanceScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+        Text(label,
+            style:
+                const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
         Text(
           value,
-          style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: color),
+          style: TextStyle(
+              fontSize: 14, fontWeight: FontWeight.bold, color: color),
         ),
       ],
     );
@@ -354,13 +388,27 @@ class _AfternoonAttendanceScreenState extends State<AfternoonAttendanceScreen> {
       },
       child: Scaffold(
         appBar: AppBar(
-          title: Text("Afternoon Attendance — ${widget.selectedClass.className}"),
+          titleSpacing: 12,
+          title: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CollegeLogo(height: 32),
+              const SizedBox(width: 10),
+              Flexible(
+                child: Text(
+                  "Afternoon Attendance — ${widget.selectedClass.className}",
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
           actions: [
             TextButton.icon(
               icon: const Icon(Icons.done_all, size: 18, color: Colors.white),
               label: const Text(
                 "All Present",
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                style:
+                    TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
               ),
               onPressed: _isLoading ? null : _markAllAsPresent,
             ),
@@ -373,16 +421,22 @@ class _AfternoonAttendanceScreenState extends State<AfternoonAttendanceScreen> {
                   // Afternoon Metric Strip with 4 Distinct Statuses + Unmarked
                   Container(
                     color: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 12),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
-                        _countColumn("Total", _allStudents.length.toString(), AppColors.textPrimary),
-                        _countColumn("Present", _presentCount.toString(), AppColors.present),
-                        _countColumn("Absent", _absentCount.toString(), AppColors.absent),
+                        _countColumn("Total", _allStudents.length.toString(),
+                            AppColors.textPrimary),
+                        _countColumn("Present", _presentCount.toString(),
+                            AppColors.present),
+                        _countColumn("Absent", _absentCount.toString(),
+                            AppColors.absent),
                         _countColumn("OD", _odCount.toString(), AppColors.od),
-                        _countColumn("Bunk", _bunkCount.toString(), AppColors.bunk),
-                        _countColumn("Unmarked", _unmarkedCount.toString(), AppColors.unmarked),
+                        _countColumn(
+                            "Bunk", _bunkCount.toString(), AppColors.bunk),
+                        _countColumn("Unmarked", _unmarkedCount.toString(),
+                            AppColors.unmarked),
                       ],
                     ),
                   ),
@@ -390,13 +444,15 @@ class _AfternoonAttendanceScreenState extends State<AfternoonAttendanceScreen> {
 
                   // Search Bar
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 10),
                     child: TextField(
                       controller: _searchController,
                       onChanged: _onSearchChanged,
                       decoration: InputDecoration(
                         hintText: "Search student name or register number...",
-                        prefixIcon: const Icon(Icons.search, color: AppColors.textSecondary),
+                        prefixIcon: const Icon(Icons.search,
+                            color: AppColors.textSecondary),
                         suffixIcon: _searchQuery.isNotEmpty
                             ? IconButton(
                                 icon: const Icon(Icons.clear),
@@ -461,7 +517,8 @@ class _AfternoonAttendanceScreenState extends State<AfternoonAttendanceScreen> {
                           icon: const Icon(Icons.checklist, size: 18),
                           label: const Text("Review"),
                           style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 14),
                             side: const BorderSide(color: AppColors.primary),
                           ),
                         ),
@@ -488,12 +545,16 @@ class _AfternoonAttendanceScreenState extends State<AfternoonAttendanceScreen> {
       children: [
         Text(
           value,
-          style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: color),
+          style: TextStyle(
+              fontSize: 17, fontWeight: FontWeight.bold, color: color),
         ),
         const SizedBox(height: 2),
         Text(
           label,
-          style: const TextStyle(fontSize: 10, color: AppColors.textSecondary, fontWeight: FontWeight.w500),
+          style: const TextStyle(
+              fontSize: 10,
+              color: AppColors.textSecondary,
+              fontWeight: FontWeight.w500),
         ),
       ],
     );

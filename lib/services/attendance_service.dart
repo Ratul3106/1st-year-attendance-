@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:student_attendance_system/models/class_model.dart';
 import 'package:student_attendance_system/models/student.dart';
@@ -22,15 +23,31 @@ class AttendanceService {
       return DemoDataService.instance.getAssignedClassesForCoordinator(coordinatorId);
     }
 
-    final response = await _supabase!
-        .from('class_coordinators')
-        .select('class_id, classes(*)')
-        .eq('coordinator_id', coordinatorId);
+    try {
+      final response = await _supabase!
+          .from('class_coordinators')
+          .select('class_id')
+          .eq('coordinator_id', coordinatorId);
 
-    return (response as List).map((row) {
-      final classJson = row['classes'] as Map<String, dynamic>;
-      return ClassModel.fromJson(classJson);
-    }).toList();
+      final classIds = (response as List)
+          .map((row) => row['class_id'] as String?)
+          .whereType<String>()
+          .toList();
+
+      if (classIds.isEmpty) return [];
+
+      final classesRes = await _supabase!
+          .from('classes')
+          .select()
+          .inFilter('id', classIds)
+          .eq('active', true)
+          .order('created_at');
+
+      return (classesRes as List).map((row) => ClassModel.fromJson(row)).toList();
+    } catch (e) {
+      debugPrint("Error fetching assigned classes: $e");
+      return [];
+    }
   }
 
   // Fetch active enrolled students for a class
@@ -39,15 +56,103 @@ class AttendanceService {
       return DemoDataService.instance.getEnrolledStudents(classId);
     }
 
-    final response = await _supabase!
-        .from('class_enrollments')
-        .select('student_id, students(*)')
-        .eq('class_id', classId);
+    try {
+      final response = await _supabase!
+          .from('class_enrollments')
+          .select('student_id')
+          .eq('class_id', classId);
 
-    return (response as List)
-        .where((row) => row['students'] != null && row['students']['active'] == true)
-        .map((row) => Student.fromJson(row['students'] as Map<String, dynamic>))
-        .toList();
+      final studentIds = (response as List)
+          .map((row) => row['student_id'] as String?)
+          .whereType<String>()
+          .toList();
+
+      if (studentIds.isEmpty) return [];
+
+      final studentsRes = await _supabase!
+          .from('students')
+          .select()
+          .inFilter('id', studentIds)
+          .eq('active', true)
+          .order('register_number');
+
+      return (studentsRes as List)
+          .map((row) => Student.fromJson(row as Map<String, dynamic>))
+          .toList();
+    } catch (e) {
+      debugPrint("Error fetching enrolled students: $e");
+      return [];
+    }
+  }
+
+  // Get attendance records for both morning and afternoon sessions for a class on a date
+  Future<Map<String, Map<String, AttendanceRecord?>>> getClassAttendanceForDate({
+    required String classId,
+    required String date,
+  }) async {
+    if (SupabaseConfig.isDemoMode) {
+      final demo = DemoDataService.instance;
+      final students = demo.getEnrolledStudents(classId);
+      final Map<String, AttendanceRecord?> morning = {};
+      final Map<String, AttendanceRecord?> afternoon = {};
+      for (final s in students) {
+        final recMap = demo.getStudentRecordsForDate(
+          classId: classId,
+          date: date,
+          studentId: s.id,
+        );
+        morning[s.id] = recMap['morning'];
+        afternoon[s.id] = recMap['afternoon'];
+      }
+      return {'morning': morning, 'afternoon': afternoon};
+    }
+
+    final Map<String, AttendanceRecord?> morning = {};
+    final Map<String, AttendanceRecord?> afternoon = {};
+
+    try {
+      final sessions = await _supabase!
+          .from('attendance_sessions')
+          .select('id, session_type')
+          .eq('class_id', classId)
+          .eq('attendance_date', date);
+
+      String? morningSessionId;
+      String? afternoonSessionId;
+
+      for (final s in (sessions as List)) {
+        if (s['session_type'] == 'morning') {
+          morningSessionId = s['id'] as String;
+        } else if (s['session_type'] == 'afternoon') {
+          afternoonSessionId = s['id'] as String;
+        }
+      }
+
+      final sessionIds = [
+        if (morningSessionId != null) morningSessionId,
+        if (afternoonSessionId != null) afternoonSessionId,
+      ];
+
+      if (sessionIds.isNotEmpty) {
+        final records = await _supabase!
+            .from('attendance_records')
+            .select()
+            .inFilter('session_id', sessionIds);
+
+        for (final r in (records as List)) {
+          final rec = AttendanceRecord.fromJson(r as Map<String, dynamic>);
+          if (r['session_id'] == morningSessionId) {
+            morning[rec.studentId] = rec;
+          } else if (r['session_id'] == afternoonSessionId) {
+            afternoon[rec.studentId] = rec;
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint("Error in getClassAttendanceForDate: $e");
+    }
+
+    return {'morning': morning, 'afternoon': afternoon};
   }
 
   // Get or Create Attendance Session (morning/afternoon) for a class and date
@@ -163,4 +268,3 @@ class AttendanceService {
         .eq('id', sessionId);
   }
 }
-

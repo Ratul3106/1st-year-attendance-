@@ -13,6 +13,7 @@ import 'package:student_attendance_system/screens/coordinator/afternoon_attendan
 import 'package:student_attendance_system/screens/coordinator/attendance_summary_screen.dart';
 import 'package:student_attendance_system/screens/auth/login_screen.dart';
 import 'package:student_attendance_system/screens/profile/user_profile_screen.dart';
+import 'package:student_attendance_system/widgets/college_logo.dart';
 
 class CoordinatorDashboard extends StatefulWidget {
   const CoordinatorDashboard({super.key});
@@ -122,7 +123,20 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Coordinator Dashboard"),
+        titleSpacing: 12,
+        title: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CollegeLogo(height: 36),
+            SizedBox(width: 12),
+            Flexible(
+              child: Text(
+                "Coordinator Dashboard",
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),

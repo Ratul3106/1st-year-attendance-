@@ -128,6 +128,48 @@ Please review the detailed records in the College Attendance Portal.
   - `{{4}}`: Period Start Date
   - `{{5}}`: Period End Date
 
+### Template 3: Automated & Manual Daily Attendance Report
+- **Name**: `attendance_daily_report`
+- **Category**: `UTILITY`
+- **Language**: `English (US)` (`en_US`)
+- **Body Content**:
+```
+STUDENT ATTENDANCE REPORT
+
+Date: {{1}}
+Department: {{2}}
+Class: {{3}}
+Academic Year: {{4}}
+
+MORNING ATTENDANCE
+Total Students: {{5}}
+Present: {{6}}
+Absent: {{7}}
+OD: {{8}}
+Not Marked: {{9}}
+Attendance: {{10}}
+
+AFTERNOON ATTENDANCE
+Total Students: {{11}}
+Present: {{12}}
+Absent: {{13}}
+OD: {{14}}
+Bunk: {{15}}
+Not Marked: {{16}}
+Attendance: {{17}}
+
+SESSION COMPARISON
+Present in Both Sessions: {{18}}
+Morning Present → Afternoon Absent: {{19}}
+Afternoon Bunk: {{20}}
+
+Report Status: {{21}}
+
+Generated At: {{22}}
+
+Student Attendance Management System
+```
+
 ---
 
 ## 4. Setup & Environment Configuration
@@ -191,6 +233,12 @@ supabase functions deploy whatsapp-worker
 
 # 3. Scheduled repeated-absence job
 supabase functions deploy repeated-absence-job
+
+# 4. Daily attendance report job (2:00 PM IST preliminary & final triggers)
+supabase functions deploy daily-attendance-report-job
+
+# 5. Secure report sending & test connection endpoint
+supabase functions deploy send-whatsapp-report
 ```
 
 ### Configure Meta Webhook URL:
@@ -199,9 +247,20 @@ supabase functions deploy repeated-absence-job
 3. **Verify Token**: Matching `WHATSAPP_WEBHOOK_VERIFY_TOKEN`
 4. Subscribe to the webhook field: **`messages`** (receives delivery status updates: `sent`, `delivered`, `read`, `failed`).
 
-### Automate Scheduled Summary (pg_cron):
+### Automate Scheduled Summary & Daily Reports (pg_cron):
 ```sql
--- Schedule daily repeated-absence evaluation at 18:00 IST (12:30 UTC)
+-- 1. Schedule daily 2:00 PM IST (14:00 IST = 08:30 UTC) Attendance Report Trigger
+SELECT cron.schedule(
+    'daily_2pm_ist_attendance_report',
+    '30 8 * * *',
+    $$SELECT net.http_post(
+        url := 'https://<YOUR-PROJECT-ID>.supabase.co/functions/v1/daily-attendance-report-job',
+        headers := '{"Content-Type": "application/json", "Authorization": "Bearer <SERVICE_ROLE_KEY>"}'::jsonb,
+        body := '{"report_type": "preliminary"}'::jsonb
+    );$$
+);
+
+-- 2. Schedule daily repeated-absence evaluation at 18:00 IST (12:30 UTC)
 SELECT cron.schedule(
     'daily_repeated_absence_evaluation',
     '30 12 * * *',
@@ -238,7 +297,7 @@ Run the Flutter automated test suite:
 flutter test
 ```
 
-All 23 comprehensive tests pass with 100% coverage across:
+All 33 comprehensive tests pass with 100% coverage across:
 1. New absence triggers notification to Class Advisor.
 2. Present record does NOT trigger an absence notification.
 3. Re-saving unchanged attendance does not duplicate notifications.
@@ -252,6 +311,16 @@ All 23 comprehensive tests pass with 100% coverage across:
 11. Duplicate webhook events do not corrupt delivery statuses.
 12. Scheduled summaries are idempotent across restarts.
 13. Missing API credentials result in clean configuration error without exposing secrets.
+14. BUNK status is counted towards repeated-absence thresholds.
+15. Unfinalized (open) sessions are strictly excluded from repeated-absence evaluations.
+16. Unmarked students are strictly distinguished from absent and never counted as absent.
+17. Attendance percentages are calculated strictly on recorded denominator.
+18. Report message format matches Section 5 specification exactly (headers, session counts, comparisons, and timestamps).
+19. Authorized recipient management, phone masking (+91 98*** **299), and class assignment.
+20. Manual send report dispatches and creates delivery logs.
+21. Webhook delivery status updates from SENT to DELIVERED and READ.
+22. Controlled retry for eligible failed delivery logs.
+23. Test WhatsApp connection validation with international phone number checks.
 
 ---
 
@@ -260,15 +329,14 @@ All 23 comprehensive tests pass with 100% coverage across:
 1. Log in with Administrator credentials (`admin@college.edu`).
 2. Navigate to **System Control Panel -> Administrative Operations**:
    - **WhatsApp Attendance Alerts Configuration**:
-     - Toggle Immediate Absence Alerts ON/OFF
-     - Toggle Repeated-Absence Summaries ON/OFF
-     - Adjust Qualifying Absence Threshold (1 to 10)
-     - Adjust Reporting Window Days (3 to 30)
-     - Configure Dean of Placement & Training phone number
-     - Add additional authorized recipient staff
+     - **Tab 1: API Settings**: Configure Phone Number ID, Business Account ID, Graph API Version (`v21.0`), view server-side token status, and send instant Test Messages.
+     - **Tab 2: Report Scheduling**: Configure automatic daily reports at 14:00 IST (2:00 PM), preliminary vs final report dispatch rules, and absence thresholds.
+     - **Tab 3: Authorized Recipients**: Add, edit, or disable staff recipients with designation, international phone numbers, class assignment mapping, and consent tracking.
+     - **Tab 4: Meta Templates**: Reference official template parameters for `attendance_daily_report`, `attendance_absence_alert`, and `attendance_repeat_summary`.
+   - **Send WhatsApp Attendance Report**:
+     - Interactive modal to select Date, Class, Report Scope (Morning, Afternoon, Combined), and authorized staff recipients with a real-time WhatsApp bubble preview.
    - **WhatsApp Delivery Logs & History**:
-     - Filter logs by status (`Queued`, `Processing`, `Sent`, `Delivered`, `Read`, `Failed`)
-     - Inspect provider message IDs (`wamid`), delivery timestamps, and student roll numbers
-     - Trigger **Run Absence Summary** on-demand with interactive student preview
-     - Trigger **Flush Outbox** to immediately process queued alerts
-     - Retry failed messages with 1-click retry
+     - Monitor delivery statuses: `Queued`, `Processing`, `Sent`, `Delivered`, `Read`, `Failed`.
+     - Filter logs by Date Range, Class, Recipient, and Status.
+     - 1-click retry for eligible failed messages.
+     - Trigger **Flush Outbox** to immediately process queued alerts.

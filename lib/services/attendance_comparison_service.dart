@@ -18,7 +18,8 @@ class StudentDailyComparison {
   });
 
   String get morningStatusDisplay => morningStatus?.displayName ?? 'Not Marked';
-  String get afternoonStatusDisplay => afternoonStatus?.displayName ?? 'Not Marked';
+  String get afternoonStatusDisplay =>
+      afternoonStatus?.displayName ?? 'Not Marked';
 }
 
 class AttendanceComparisonEngine {
@@ -38,34 +39,44 @@ class AttendanceComparisonEngine {
     }
 
     // Both sessions are explicitly marked
-    if (morning == AttendanceStatus.present && afternoon == AttendanceStatus.present) {
+    if (morning == AttendanceStatus.present &&
+        afternoon == AttendanceStatus.present) {
       return 'Present in both sessions';
     }
-    if (morning == AttendanceStatus.present && afternoon == AttendanceStatus.absent) {
+    if (morning == AttendanceStatus.present &&
+        afternoon == AttendanceStatus.absent) {
       return 'Present in the morning, absent in the afternoon';
     }
-    if (morning == AttendanceStatus.present && afternoon == AttendanceStatus.od) {
+    if (morning == AttendanceStatus.present &&
+        afternoon == AttendanceStatus.od) {
       return 'OD in the afternoon';
     }
-    if (morning == AttendanceStatus.present && afternoon == AttendanceStatus.bunk) {
+    if (morning == AttendanceStatus.present &&
+        afternoon == AttendanceStatus.bunk) {
       return 'Marked Bunk in the afternoon';
     }
-    if (morning == AttendanceStatus.absent && afternoon == AttendanceStatus.present) {
+    if (morning == AttendanceStatus.absent &&
+        afternoon == AttendanceStatus.present) {
       return 'Present in the afternoon after morning absent';
     }
-    if (morning == AttendanceStatus.absent && afternoon == AttendanceStatus.absent) {
+    if (morning == AttendanceStatus.absent &&
+        afternoon == AttendanceStatus.absent) {
       return 'Absent in both sessions';
     }
-    if (morning == AttendanceStatus.absent && afternoon == AttendanceStatus.od) {
+    if (morning == AttendanceStatus.absent &&
+        afternoon == AttendanceStatus.od) {
       return 'Morning absent, afternoon OD';
     }
-    if (morning == AttendanceStatus.absent && afternoon == AttendanceStatus.bunk) {
+    if (morning == AttendanceStatus.absent &&
+        afternoon == AttendanceStatus.bunk) {
       return 'Morning absent, afternoon Bunk';
     }
-    if (morning == AttendanceStatus.od && afternoon == AttendanceStatus.present) {
+    if (morning == AttendanceStatus.od &&
+        afternoon == AttendanceStatus.present) {
       return 'Present in the afternoon after morning OD';
     }
-    if (morning == AttendanceStatus.od && afternoon == AttendanceStatus.absent) {
+    if (morning == AttendanceStatus.od &&
+        afternoon == AttendanceStatus.absent) {
       return 'Morning OD, afternoon absent';
     }
     if (morning == AttendanceStatus.od && afternoon == AttendanceStatus.od) {
@@ -79,7 +90,8 @@ class AttendanceComparisonEngine {
   }
 
   /// Determines if this combination is an attendance shift / discrepancy
-  static bool isDiscrepancy(AttendanceStatus? morning, AttendanceStatus? afternoon) {
+  static bool isDiscrepancy(
+      AttendanceStatus? morning, AttendanceStatus? afternoon) {
     if (morning == null || afternoon == null) return false;
     // Difference between morning and afternoon
     return morning != afternoon;
@@ -94,7 +106,8 @@ class AttendanceComparisonEngine {
     return students.map((student) {
       final mStatus = morningRecords[student.id];
       final aStatus = afternoonRecords[student.id];
-      final category = categorizeComparison(morning: mStatus, afternoon: aStatus);
+      final category =
+          categorizeComparison(morning: mStatus, afternoon: aStatus);
       final disc = isDiscrepancy(mStatus, aStatus);
 
       return StudentDailyComparison(
@@ -126,7 +139,7 @@ class AttendanceComparisonEngine {
     int mP = 0, mA = 0, mOd = 0;
     int aP = 0, aA = 0, aOd = 0, aBunk = 0;
     int bothP = 0, bothA = 0;
-    int mP_aA = 0, mA_aP = 0, mP_aBunk = 0, mP_aOd = 0, mOd_aP = 0;
+    int mpAa = 0, maAp = 0, mpAbunk = 0, mpAod = 0, modAp = 0;
     int incompleteCount = 0;
     final List<StudentDiscrepancy> discrepancies = [];
 
@@ -143,16 +156,21 @@ class AttendanceComparisonEngine {
       if (a == AttendanceStatus.od) aOd++;
       if (a == AttendanceStatus.bunk) aBunk++;
 
-      if (m == AttendanceStatus.present && a == AttendanceStatus.present) bothP++;
+      if (m == AttendanceStatus.present && a == AttendanceStatus.present) {
+        bothP++;
+      }
       if (m == AttendanceStatus.absent && a == AttendanceStatus.absent) bothA++;
-      if (m == AttendanceStatus.present && a == AttendanceStatus.absent) mP_aA++;
-      if (m == AttendanceStatus.absent && a == AttendanceStatus.present) mA_aP++;
-      if (m == AttendanceStatus.present && a == AttendanceStatus.bunk) mP_aBunk++;
-      if (m == AttendanceStatus.present && a == AttendanceStatus.od) mP_aOd++;
-      if (m == AttendanceStatus.od && a == AttendanceStatus.present) mOd_aP++;
+      if (m == AttendanceStatus.present && a == AttendanceStatus.absent) mpAa++;
+      if (m == AttendanceStatus.absent && a == AttendanceStatus.present) maAp++;
+      if (m == AttendanceStatus.present && a == AttendanceStatus.bunk) {
+        mpAbunk++;
+      }
+      if (m == AttendanceStatus.present && a == AttendanceStatus.od) mpAod++;
+      if (m == AttendanceStatus.od && a == AttendanceStatus.present) modAp++;
 
       // Incomplete flag
-      if ((hasMorningSession && m == null) || (hasAfternoonSession && a == null)) {
+      if ((hasMorningSession && m == null) ||
+          (hasAfternoonSession && a == null)) {
         incompleteCount++;
       }
 
@@ -188,11 +206,11 @@ class AttendanceComparisonEngine {
       afternoonBunk: aBunk,
       bothPresent: bothP,
       bothAbsent: bothA,
-      morningPresentAfternoonAbsent: mP_aA,
-      morningAbsentAfternoonPresent: mA_aP,
-      morningPresentAfternoonBunk: mP_aBunk,
-      morningPresentAfternoonOd: mP_aOd,
-      morningOdAfternoonPresent: mOd_aP,
+      morningPresentAfternoonAbsent: mpAa,
+      morningAbsentAfternoonPresent: maAp,
+      morningPresentAfternoonBunk: mpAbunk,
+      morningPresentAfternoonOd: mpAod,
+      morningOdAfternoonPresent: modAp,
       incompleteCount: incompleteCount,
       discrepancies: discrepancies,
       status: 'generated',

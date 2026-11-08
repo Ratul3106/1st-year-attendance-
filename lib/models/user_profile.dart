@@ -31,6 +31,7 @@ class UserProfile {
   final String id;
   final String fullName;
   final UserRole role;
+  final String? email;
   final bool active;
   final DateTime createdAt;
 
@@ -38,6 +39,7 @@ class UserProfile {
     required this.id,
     required this.fullName,
     required this.role,
+    this.email,
     required this.active,
     required this.createdAt,
   });
@@ -47,6 +49,7 @@ class UserProfile {
       id: json['id'] as String,
       fullName: json['full_name'] as String? ?? 'User',
       role: UserRole.fromString(json['role'] as String? ?? 'coordinator'),
+      email: json['email'] as String?,
       active: json['active'] as bool? ?? true,
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'] as String)
@@ -59,8 +62,17 @@ class UserProfile {
       'id': id,
       'full_name': fullName,
       'role': role.name,
+      if (email != null) 'email': email,
       'active': active,
       'created_at': createdAt.toIso8601String(),
     };
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is UserProfile && runtimeType == other.runtimeType && id == other.id;
+
+  @override
+  int get hashCode => id.hashCode;
 }

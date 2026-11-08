@@ -38,7 +38,8 @@ class AdminAnalyticsData {
     required this.totalClassesFiltered,
   });
 
-  factory AdminAnalyticsData.empty({int totalStudents = 0, int totalClasses = 0}) {
+  factory AdminAnalyticsData.empty(
+      {int totalStudents = 0, int totalClasses = 0}) {
     return AdminAnalyticsData(
       totalStudents: totalStudents,
       morningPresent: 0,
@@ -88,7 +89,9 @@ class AdminAnalyticsService {
     try {
       // 1. Get filtered classes
       var classQuery = _supabase!.from('classes').select().eq('active', true);
-      if (academicYear != null && academicYear.isNotEmpty && academicYear != 'All') {
+      if (academicYear != null &&
+          academicYear.isNotEmpty &&
+          academicYear != 'All') {
         classQuery = classQuery.eq('academic_year', academicYear);
       }
       if (department != null && department.isNotEmpty && department != 'All') {
@@ -99,7 +102,8 @@ class AdminAnalyticsService {
       }
 
       final classList = await classQuery;
-      final filteredClassIds = (classList as List).map((c) => c['id'] as String).toList();
+      final filteredClassIds =
+          (classList as List).map((c) => c['id'] as String).toList();
 
       if (filteredClassIds.isEmpty) {
         return AdminAnalyticsData.empty();
@@ -194,7 +198,9 @@ class AdminAnalyticsService {
     final demo = DemoDataService.instance;
     List<ClassModel> classes = demo.getAllClasses();
 
-    if (academicYear != null && academicYear.isNotEmpty && academicYear != 'All') {
+    if (academicYear != null &&
+        academicYear.isNotEmpty &&
+        academicYear != 'All') {
       classes = classes.where((c) => c.academicYear == academicYear).toList();
     }
     if (department != null && department.isNotEmpty && department != 'All') {
@@ -262,7 +268,7 @@ class AdminAnalyticsService {
     int mP = 0, mA = 0, mOd = 0;
     int aP = 0, aA = 0, aOd = 0, aBunk = 0;
     int bothP = 0;
-    int mP_aA = 0;
+    int mpAa = 0;
 
     for (final sid in studentIds) {
       final m = morningRecords[sid];
@@ -277,8 +283,10 @@ class AdminAnalyticsService {
       if (a == AttendanceStatus.od) aOd++;
       if (a == AttendanceStatus.bunk) aBunk++;
 
-      if (m == AttendanceStatus.present && a == AttendanceStatus.present) bothP++;
-      if (m == AttendanceStatus.present && a == AttendanceStatus.absent) mP_aA++;
+      if (m == AttendanceStatus.present && a == AttendanceStatus.present) {
+        bothP++;
+      }
+      if (m == AttendanceStatus.present && a == AttendanceStatus.absent) mpAa++;
     }
 
     // Apply session filter masking if specific session selected
@@ -288,13 +296,13 @@ class AdminAnalyticsService {
       aOd = 0;
       aBunk = 0;
       bothP = 0;
-      mP_aA = 0;
+      mpAa = 0;
     } else if (sessionFilter == 'Afternoon') {
       mP = 0;
       mA = 0;
       mOd = 0;
       bothP = 0;
-      mP_aA = 0;
+      mpAa = 0;
     }
 
     final mMarked = mP + mA + mOd;
@@ -315,7 +323,7 @@ class AdminAnalyticsService {
       morningPercentage: morningPercentage,
       afternoonPercentage: afternoonPercentage,
       studentsPresentBoth: bothP,
-      studentsPresentMorningAbsentAfternoon: mP_aA,
+      studentsPresentMorningAbsentAfternoon: mpAa,
       hasRecords: (mMarked > 0 || aMarked > 0),
       totalClassesFiltered: totalClasses,
     );

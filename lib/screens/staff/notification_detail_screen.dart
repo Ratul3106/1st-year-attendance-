@@ -5,6 +5,7 @@ import 'package:student_attendance_system/models/app_notification.dart';
 import 'package:student_attendance_system/models/daily_report.dart';
 import 'package:student_attendance_system/services/report_service.dart';
 import 'package:student_attendance_system/screens/staff/daily_report_detail_screen.dart';
+import 'package:student_attendance_system/widgets/college_logo.dart';
 
 class NotificationDetailScreen extends StatefulWidget {
   final AppNotification notification;
@@ -41,7 +42,20 @@ class _NotificationDetailScreenState extends State<NotificationDetailScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Notification Details"),
+        titleSpacing: 12,
+        title: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CollegeLogo(height: 32),
+            SizedBox(width: 10),
+            Flexible(
+              child: Text(
+                "Notification Details",
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
       ),
       body: Padding(
         padding: const EdgeInsets.all(20.0),

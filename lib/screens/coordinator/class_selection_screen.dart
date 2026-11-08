@@ -3,6 +3,7 @@ import 'package:student_attendance_system/core/constants/app_colors.dart';
 import 'package:student_attendance_system/models/class_model.dart';
 import 'package:student_attendance_system/services/attendance_service.dart';
 import 'package:student_attendance_system/services/auth_service.dart';
+import 'package:student_attendance_system/widgets/college_logo.dart';
 
 class ClassSelectionScreen extends StatefulWidget {
   const ClassSelectionScreen({super.key});
@@ -39,7 +40,20 @@ class _ClassSelectionScreenState extends State<ClassSelectionScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Assigned Classes"),
+        titleSpacing: 12,
+        title: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CollegeLogo(height: 32),
+            SizedBox(width: 10),
+            Flexible(
+              child: Text(
+                "Assigned Classes",
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())

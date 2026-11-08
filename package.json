@@ -1,0 +1,40 @@
+{
+  "devDependencies": {
+    "supabase": "^3.0.0"
+  },
+  "name": "studentattendance",
+  "version": "1.0.0",
+  "description": "A modern, production-grade Attendance Monitoring System for engineering and arts colleges. It integrates Flutter (responsive Web/Mobile), Supabase (PostgreSQL with Row Level Security, Triggers & Edge Functions), and the official **Meta WhatsApp Business Platform Cloud API** for real-time absence alerts and repeated-absence intervention summaries.",
+  "main": "index.js",
+  "directories": {
+    "lib": "lib",
+    "test": "test"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.119.0",
+    "dotenv": "^18.0.9",
+    "eciesjs": "^0.5.0",
+    "exceljs": "^4.4.0",
+    "jose": "^6.2.15",
+    "node-cron": "^4.6.0",
+    "pdfkit": "^0.20.2",
+    "qrcode-terminal": "^0.12.0",
+    "whatsapp-web.js": "^1.34.7"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Ratul3106/1st-year-attendance-.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Ratul3106/1st-year-attendance-/issues"
+  },
+  "homepage": "https://github.com/Ratul3106/1st-year-attendance-#readme"
+}

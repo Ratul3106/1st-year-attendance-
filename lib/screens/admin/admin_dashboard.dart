@@ -5,13 +5,14 @@ import 'package:student_attendance_system/models/class_model.dart';
 import 'package:student_attendance_system/services/auth_service.dart';
 import 'package:student_attendance_system/services/admin_service.dart';
 import 'package:student_attendance_system/services/admin_analytics_service.dart';
-import 'package:student_attendance_system/screens/admin/class_management_screen.dart';
 import 'package:student_attendance_system/screens/admin/student_management_screen.dart';
 import 'package:student_attendance_system/screens/admin/coordinator_assignment_screen.dart';
 import 'package:student_attendance_system/screens/admin/whatsapp_settings_screen.dart';
 import 'package:student_attendance_system/screens/admin/whatsapp_history_screen.dart';
 import 'package:student_attendance_system/screens/auth/login_screen.dart';
 import 'package:student_attendance_system/screens/profile/user_profile_screen.dart';
+import 'package:student_attendance_system/widgets/download_report_dialog.dart';
+import 'package:student_attendance_system/widgets/college_logo.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -96,12 +97,39 @@ class _AdminDashboardState extends State<AdminDashboard> {
     }
   }
 
+  void _openDownloadReportDialog() {
+    DownloadReportDialog.show(
+      context,
+      classes: _allClasses,
+      initialClassId: _selectedClassId,
+      initialDate: _selectedDate,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Administrator Dashboard"),
+        titleSpacing: 12,
+        title: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CollegeLogo(height: 36),
+            SizedBox(width: 12),
+            Flexible(
+              child: Text(
+                "Administrator Dashboard",
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.assessment_outlined),
+            tooltip: "Show & Download Report",
+            onPressed: _openDownloadReportDialog,
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: "Refresh Analytics",
@@ -109,6 +137,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
           ),
           IconButton(
             icon: const Icon(Icons.person_outline),
+            tooltip: "User Profile",
             onPressed: () {
               Navigator.push(
                 context,
@@ -118,6 +147,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
           ),
           IconButton(
             icon: const Icon(Icons.logout),
+            tooltip: "Sign Out",
             onPressed: () async {
               await _authService.signOut();
               if (!mounted) return;
@@ -136,7 +166,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // System Control Panel Header Card (Preserved from existing UI)
+                  // System Control Panel Header Card
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
@@ -204,6 +234,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                             // Date Picker Chip
                             InkWell(
                               onTap: _pickDate,
+                              mouseCursor: SystemMouseCursors.click,
                               borderRadius: BorderRadius.circular(6),
                               child: Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -273,8 +304,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                 items: ['All', ..._allClasses.map((c) => c.id)],
                                 itemLabel: (id) {
                                   if (id == 'All') return 'All College Classes';
-                                  final match = _allClasses.firstWhere((c) => c.id == id, orElse: () => _allClasses.first);
-                                  return match.className;
+                                  final matches = _allClasses.where((c) => c.id == id);
+                                  if (matches.isNotEmpty) return matches.first.className;
+                                  return id;
                                 },
                                 onChanged: (v) {
                                   setState(() => _selectedClassId = v!);
@@ -333,10 +365,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   ),
                   const SizedBox(height: 12),
 
-                  // Class-wise Student Management & Reporting
+                  // Class & Student Management (Integrated)
                   _adminOptionCard(
                     title: "Class & Student Management",
-                    subtitle: "Class selection, student enrollment, daily status & Overall Report Generation",
+                    subtitle: "Create classes, manage enrollment, daily status & Overall Report Generation",
                     icon: Icons.people_outline,
                     color: AppColors.present,
                     onTap: () async {
@@ -344,25 +376,19 @@ class _AdminDashboardState extends State<AdminDashboard> {
                         context,
                         MaterialPageRoute(builder: (_) => const StudentManagementScreen()),
                       );
-                      _refreshAnalytics();
+                      _loadInitialData();
                     },
                   ),
 
                   const SizedBox(height: 12),
 
-                  // Class Management
+                  // Attendance Report (Show & Download)
                   _adminOptionCard(
-                    title: "Manage Classes",
-                    subtitle: "Create, view, and configure department classes and academic years",
-                    icon: Icons.class_outlined,
+                    title: "Attendance Report (Show & Download)",
+                    subtitle: "Show categorized attendance report, view analytics summary, and export to PDF or Excel",
+                    icon: Icons.assessment_outlined,
                     color: AppColors.primary,
-                    onTap: () async {
-                      await Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => const ClassManagementScreen()),
-                      );
-                      _loadInitialData();
-                    },
+                    onTap: _openDownloadReportDialog,
                   ),
 
                   const SizedBox(height: 12),
@@ -449,7 +475,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
   Widget _buildMetricsGrid(AdminAnalyticsData data) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        // Adapt columns based on screen width
         final int crossAxisCount = constraints.maxWidth > 900
             ? 4
             : constraints.maxWidth > 600
@@ -464,84 +489,72 @@ class _AdminDashboardState extends State<AdminDashboard> {
           crossAxisSpacing: 10,
           mainAxisSpacing: 10,
           children: [
-            // 1. Total Students
             _metricCard(
               title: "Total Students",
               value: "${data.totalStudents}",
               icon: Icons.school_outlined,
               color: AppColors.primary,
             ),
-            // 2. Morning Present
             _metricCard(
               title: "Morning Present",
               value: "${data.morningPresent}",
               icon: Icons.wb_sunny_outlined,
               color: AppColors.present,
             ),
-            // 3. Morning Absent
             _metricCard(
               title: "Morning Absent",
               value: "${data.morningAbsent}",
               icon: Icons.close_outlined,
               color: AppColors.absent,
             ),
-            // 4. Morning OD
             _metricCard(
               title: "Morning OD",
               value: "${data.morningOd}",
               icon: Icons.badge_outlined,
               color: AppColors.od,
             ),
-            // 5. Afternoon Present
             _metricCard(
               title: "Afternoon Present",
               value: "${data.afternoonPresent}",
               icon: Icons.brightness_6_outlined,
               color: AppColors.present,
             ),
-            // 6. Afternoon Absent
             _metricCard(
               title: "Afternoon Absent",
               value: "${data.afternoonAbsent}",
               icon: Icons.highlight_off_outlined,
               color: AppColors.absent,
             ),
-            // 7. Afternoon OD
             _metricCard(
               title: "Afternoon OD",
               value: "${data.afternoonOd}",
               icon: Icons.verified_user_outlined,
               color: AppColors.od,
             ),
-            // 8. Afternoon Bunk
             _metricCard(
               title: "Afternoon Bunk",
               value: "${data.afternoonBunk}",
               icon: Icons.directions_run_outlined,
               color: AppColors.bunk,
             ),
-            // 9. Morning Attendance Percentage
             _metricCard(
               title: "Morning %",
               value: "${data.morningPercentage.toStringAsFixed(1)}%",
               icon: Icons.pie_chart_outline,
               color: AppColors.primaryLight,
             ),
-            // 10. Afternoon Attendance Percentage
             _metricCard(
               title: "Afternoon %",
               value: "${data.afternoonPercentage.toStringAsFixed(1)}%",
               icon: Icons.donut_large_outlined,
               color: AppColors.primary,
             ),
-            // 11. Students Present in Both Sessions
             _metricCard(
               title: "Present Both Sessions",
               value: "${data.studentsPresentBoth}",
               icon: Icons.check_circle_outline,
               color: AppColors.present,
             ),
-            // 12. Students Present Morning but Absent Afternoon
             _metricCard(
               title: "Pres M. → Abs A.",
               value: "${data.studentsPresentMorningAbsentAfternoon}",
@@ -633,7 +646,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
           ),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<String>(
-              value: items.contains(value) ? value : items.first,
+              value: items.contains(value)
+                  ? value
+                  : (items.isNotEmpty ? items.first : null),
               isExpanded: true,
               style: const TextStyle(fontSize: 12, color: AppColors.textPrimary, fontWeight: FontWeight.w600),
               items: items.map((item) {
@@ -660,35 +675,51 @@ class _AdminDashboardState extends State<AdminDashboard> {
     required Color color,
     required VoidCallback onTap,
   }) {
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: const BorderSide(color: AppColors.border),
-      ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.all(16),
-        leading: Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.12),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(icon, color: color, size: 28),
-        ),
-        title: Text(
-          title,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-        ),
-        subtitle: Padding(
-          padding: const EdgeInsets.only(top: 4.0),
-          child: Text(
-            subtitle,
-            style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-          ),
-        ),
-        trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: AppColors.textSecondary),
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(12),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
         onTap: onTap,
+        mouseCursor: SystemMouseCursors.click,
+        hoverColor: color.withValues(alpha: 0.05),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.border),
+          ),
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: color, size: 28),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.arrow_forward_ios, size: 16, color: AppColors.textSecondary),
+            ],
+          ),
+        ),
       ),
     );
   }

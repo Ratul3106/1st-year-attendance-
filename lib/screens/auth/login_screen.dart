@@ -8,6 +8,7 @@ import 'package:student_attendance_system/screens/coordinator/coordinator_dashbo
 import 'package:student_attendance_system/screens/staff/staff_report_inbox_screen.dart';
 import 'package:student_attendance_system/screens/admin/admin_dashboard.dart';
 import 'package:student_attendance_system/models/user_profile.dart';
+import 'package:student_attendance_system/widgets/college_logo.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -83,51 +84,60 @@ class _LoginScreenState extends State<LoginScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-            child: Form(
-              key: _formKey,
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 480),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // Logo Header
-                    Center(
-                      child: Container(
-                        height: 80,
-                        width: 80,
-                        decoration: BoxDecoration(
-                          color: AppColors.primary,
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppColors.primary.withValues(alpha: 0.25),
-                              blurRadius: 16,
-                              offset: const Offset(0, 6),
-                            )
-                          ],
-                        ),
-                        child: const Icon(
-                          Icons.school_rounded,
-                          size: 44,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 18),
-                    const Text(
-                      "Student Attendance Management System",
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary,
-                        letterSpacing: -0.3,
-                      ),
-                    ),
+        child: Column(
+          children: [
+            // Top Left College Logo Header
+            const Padding(
+              padding: EdgeInsets.only(left: 20, top: 14, right: 20),
+              child: Row(
+                children: [
+                  CollegeLogo(height: 38),
+                  Spacer(),
+                ],
+              ),
+            ),
+            Expanded(
+              child: Center(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                  child: Form(
+                    key: _formKey,
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 480),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          // Prominent College Logo Centerpiece
+                          Center(
+                            child: Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(color: AppColors.border),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.04),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: const CollegeLogo(height: 56),
+                            ),
+                          ),
+                          const SizedBox(height: 18),
+                          const Text(
+                            "Student Attendance Management System",
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.textPrimary,
+                              letterSpacing: -0.3,
+                            ),
+                          ),
                     const SizedBox(height: 6),
                     const Text(
                       "Sign in with your credentials and authorized role",
@@ -352,7 +362,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 child: _demoQuickButton(
                                   label: "Staff",
                                   icon: Icons.people_outline,
-                                  email: "staff@college.edu",
+                                  email: "staff.attendance@gmail.com",
                                   role: UserRole.staff,
                                 ),
                               ),
@@ -389,8 +399,11 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
       ),
-    );
-  }
+    ],
+  ),
+),
+);
+}
 
   Widget _roleOptionChip({
     required String label,

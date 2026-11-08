@@ -5,6 +5,7 @@ import 'package:student_attendance_system/models/class_model.dart';
 import 'package:student_attendance_system/models/daily_report.dart';
 import 'package:student_attendance_system/services/report_service.dart';
 import 'package:student_attendance_system/widgets/discrepancy_badge.dart';
+import 'package:student_attendance_system/widgets/college_logo.dart';
 
 class AttendanceSummaryScreen extends StatefulWidget {
   final ClassModel selectedClass;
@@ -47,7 +48,20 @@ class _AttendanceSummaryScreenState extends State<AttendanceSummaryScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Daily Attendance Summary"),
+        titleSpacing: 12,
+        title: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CollegeLogo(height: 32),
+            SizedBox(width: 10),
+            Flexible(
+              child: Text(
+                "Daily Attendance Summary",
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),

@@ -92,26 +92,40 @@ serve(async (req) => {
         ? item.template_parameters
         : [];
 
-      // Format Meta WhatsApp Business Cloud API template payload
-      const payload = {
-        messaging_product: "whatsapp",
-        recipient_type: "individual",
-        to: targetPhone,
-        type: "template",
-        template: {
-          name: item.template_name,
-          language: { code: item.template_language || "en_US" },
-          components: [
-            {
-              type: "body",
-              parameters: templateParams.map((param: any) => ({
-                type: "text",
-                text: String(param),
-              })),
-            },
-          ],
-        },
-      };
+      // Build WhatsApp payload: either approved template or formatted text
+      let payload: any;
+      if (item.template_name === "text" || !item.template_name) {
+        payload = {
+          messaging_product: "whatsapp",
+          recipient_type: "individual",
+          to: targetPhone,
+          type: "text",
+          text: {
+            preview_url: false,
+            body: item.payload?.message_text || templateParams[0] || "College Attendance Update",
+          },
+        };
+      } else {
+        payload = {
+          messaging_product: "whatsapp",
+          recipient_type: "individual",
+          to: targetPhone,
+          type: "template",
+          template: {
+            name: item.template_name,
+            language: { code: item.template_language || "en_US" },
+            components: [
+              {
+                type: "body",
+                parameters: templateParams.map((param: any) => ({
+                  type: "text",
+                  text: String(param),
+                })),
+              },
+            ],
+          },
+        };
+      }
 
       try {
         const metaApiUrl = `https://graph.facebook.com/${apiVersion}/${phoneNumberId}/messages`;

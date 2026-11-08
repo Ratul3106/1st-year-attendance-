@@ -3,6 +3,7 @@ import 'package:student_attendance_system/core/constants/app_colors.dart';
 import 'package:student_attendance_system/models/user_profile.dart';
 import 'package:student_attendance_system/services/auth_service.dart';
 import 'package:student_attendance_system/screens/auth/login_screen.dart';
+import 'package:student_attendance_system/widgets/college_logo.dart';
 
 class UserProfileScreen extends StatefulWidget {
   const UserProfileScreen({super.key});
@@ -35,7 +36,20 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("User Profile & Settings"),
+        titleSpacing: 12,
+        title: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CollegeLogo(height: 32),
+            SizedBox(width: 10),
+            Flexible(
+              child: Text(
+                "User Profile & Settings",
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
