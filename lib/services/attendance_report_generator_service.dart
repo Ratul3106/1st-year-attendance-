@@ -781,7 +781,7 @@ class AttendanceReportGeneratorService {
               children: [
                 pw.Text(
                   "Formula: ${a.percentageFormula}",
-                  style: const pw.TextStyle(
+                  style: pw.TextStyle(
                       fontSize: 7.5,
                       color: PdfColors.grey700,
                       fontStyle: pw.FontStyle.italic),
@@ -895,7 +895,7 @@ class AttendanceReportGeneratorService {
             ),
             child: pw.Text(
               emptyMessage,
-              style: const pw.TextStyle(
+              style: pw.TextStyle(
                   fontSize: 8.5,
                   color: PdfColors.grey600,
                   fontStyle: pw.FontStyle.italic),

@@ -7,6 +7,7 @@ import 'package:student_attendance_system/models/class_model.dart';
 import 'package:student_attendance_system/models/student.dart';
 import 'package:student_attendance_system/core/config/supabase_config.dart';
 import 'package:student_attendance_system/services/demo_data_service.dart';
+import 'package:student_attendance_system/services/advanced_analytics_service.dart';
 
 class AdminService {
   SupabaseClient? get _supabase {
@@ -122,12 +123,19 @@ class AdminService {
         classId: classId,
         studentId: studentId,
       );
+      try {
+        AdvancedAnalyticsService.instance.invalidateCache();
+      } catch (_) {}
       return;
     }
     await _supabase!.from('class_enrollments').upsert({
       'class_id': classId,
       'student_id': studentId,
     }, onConflict: 'class_id, student_id');
+
+    try {
+      AdvancedAnalyticsService.instance.invalidateCache();
+    } catch (_) {}
   }
 
   // Safe Seeder: Checks classes directly with limit(1), NEVER calls getAllClasses recursively

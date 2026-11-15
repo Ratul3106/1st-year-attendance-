@@ -13,6 +13,7 @@ import 'package:student_attendance_system/screens/auth/login_screen.dart';
 import 'package:student_attendance_system/screens/profile/user_profile_screen.dart';
 import 'package:student_attendance_system/widgets/download_report_dialog.dart';
 import 'package:student_attendance_system/widgets/college_logo.dart';
+import 'package:student_attendance_system/screens/admin/analytics/advanced_analytics_dashboard_screen.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -126,6 +127,16 @@ class _AdminDashboardState extends State<AdminDashboard> {
         ),
         actions: [
           IconButton(
+            icon: const Icon(Icons.insights_outlined),
+            tooltip: "Advanced Attendance Analytics",
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const AdvancedAnalyticsDashboardScreen()),
+              );
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.assessment_outlined),
             tooltip: "Show & Download Report",
             onPressed: _openDownloadReportDialog,
@@ -150,7 +161,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
             tooltip: "Sign Out",
             onPressed: () async {
               await _authService.signOut();
-              if (!mounted) return;
+              if (!context.mounted) return;
               Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(builder: (_) => const LoginScreen()),
@@ -363,6 +374,22 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     "Administrative Operations",
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
+                  const SizedBox(height: 12),
+
+                  // Advanced Attendance Analytics & Reports
+                  _adminOptionCard(
+                    title: "Advanced Attendance Analytics & Reports",
+                    subtitle: "Multi-dimensional monthly, department, class, bunk analysis, risk tiers & student performance",
+                    icon: Icons.insights_outlined,
+                    color: AppColors.primaryLight,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const AdvancedAnalyticsDashboardScreen()),
+                      );
+                    },
+                  ),
+
                   const SizedBox(height: 12),
 
                   // Class & Student Management (Integrated)

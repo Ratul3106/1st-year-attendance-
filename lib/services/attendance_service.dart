@@ -8,6 +8,7 @@ import 'package:student_attendance_system/core/config/supabase_config.dart';
 import 'package:student_attendance_system/core/utils/attendance_window_helper.dart';
 import 'package:student_attendance_system/services/demo_data_service.dart';
 import 'package:student_attendance_system/services/whatsapp_notification_service.dart';
+import 'package:student_attendance_system/services/advanced_analytics_service.dart';
 
 class AttendanceService {
   SupabaseClient? get _supabase {
@@ -293,6 +294,11 @@ class AttendanceService {
     try {
       WhatsAppNotificationService.instance.processQueue();
     } catch (_) {}
+
+    // Invalidate advanced analytics cache so metrics are immediately fresh
+    try {
+      AdvancedAnalyticsService.instance.invalidateCache();
+    } catch (_) {}
   }
 
   // Close session
@@ -305,5 +311,10 @@ class AttendanceService {
           'closed_at': DateTime.now().toIso8601String(),
         })
         .eq('id', sessionId);
+
+    // Invalidate advanced analytics cache when a session is finalized
+    try {
+      AdvancedAnalyticsService.instance.invalidateCache();
+    } catch (_) {}
   }
 }
