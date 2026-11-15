@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:student_attendance_system/core/constants/app_colors.dart';
+import 'package:student_attendance_system/core/utils/attendance_window_helper.dart';
 import 'package:student_attendance_system/models/class_model.dart';
 import 'package:student_attendance_system/models/student.dart';
 import 'package:student_attendance_system/models/attendance_session.dart';
@@ -38,27 +40,49 @@ class _AfternoonAttendanceScreenState extends State<AfternoonAttendanceScreen> {
   bool _isSaving = false;
   String _searchQuery = '';
   bool _hasUnsavedChanges = false;
+  late AttendanceWindowStatus _windowStatus;
+  Timer? _windowTimer;
 
   @override
   void initState() {
     super.initState();
+    _windowStatus = AttendanceWindowHelper.getWindowStatus(SessionType.afternoon);
+    _windowTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      setState(() {
+        _windowStatus = AttendanceWindowHelper.getWindowStatus(SessionType.afternoon);
+      });
+    });
     _loadData();
+  }
+
+  @override
+  void dispose() {
+    _windowTimer?.cancel();
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
+    if (!AttendanceWindowHelper.isSessionOpen(SessionType.afternoon)) {
+      setState(() => _isLoading = false);
+      return;
+    }
+
     try {
       final students =
           await _attendanceService.getEnrolledStudents(widget.selectedClass.id);
 
-      // Fetch morning session records to allow cross-comparison review
-      final morningSession = await _attendanceService.getOrCreateSession(
+      // Fetch morning session records (read-only) to allow cross-comparison review
+      final morningSession = await _attendanceService.getExistingSession(
         classId: widget.selectedClass.id,
         date: widget.date,
         sessionType: SessionType.morning,
       );
-      final morningRecords =
-          await _attendanceService.getSessionRecords(morningSession.id);
+      final morningRecords = morningSession != null
+          ? await _attendanceService.getSessionRecords(morningSession.id)
+          : <AttendanceRecord>[];
       Map<String, AttendanceStatus> mMap = {};
       for (var r in morningRecords) {
         mMap[r.studentId] = r.status;
@@ -377,6 +401,8 @@ class _AfternoonAttendanceScreenState extends State<AfternoonAttendanceScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final bool isWindowOpen = _windowStatus.isOpen;
+
     return PopScope(
       canPop: !_hasUnsavedChanges,
       onPopInvokedWithResult: (didPop, result) async {
@@ -403,138 +429,210 @@ class _AfternoonAttendanceScreenState extends State<AfternoonAttendanceScreen> {
             ],
           ),
           actions: [
-            TextButton.icon(
-              icon: const Icon(Icons.done_all, size: 18, color: Colors.white),
-              label: const Text(
-                "All Present",
-                style:
-                    TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            if (isWindowOpen && _session != null)
+              TextButton.icon(
+                icon: const Icon(Icons.done_all, size: 18, color: Colors.white),
+                label: const Text(
+                  "All Present",
+                  style:
+                      TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                ),
+                onPressed: _isLoading ? null : _markAllAsPresent,
               ),
-              onPressed: _isLoading ? null : _markAllAsPresent,
-            ),
           ],
         ),
         body: _isLoading
             ? const Center(child: CircularProgressIndicator())
-            : Column(
-                children: [
-                  // Afternoon Metric Strip with 4 Distinct Statuses + Unmarked
-                  Container(
-                    color: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 12),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: [
-                        _countColumn("Total", _allStudents.length.toString(),
-                            AppColors.textPrimary),
-                        _countColumn("Present", _presentCount.toString(),
-                            AppColors.present),
-                        _countColumn("Absent", _absentCount.toString(),
-                            AppColors.absent),
-                        _countColumn("OD", _odCount.toString(), AppColors.od),
-                        _countColumn(
-                            "Bunk", _bunkCount.toString(), AppColors.bunk),
-                        _countColumn("Unmarked", _unmarkedCount.toString(),
-                            AppColors.unmarked),
-                      ],
-                    ),
-                  ),
-                  const Divider(height: 1, color: AppColors.border),
-
-                  // Search Bar
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 10),
-                    child: TextField(
-                      controller: _searchController,
-                      onChanged: _onSearchChanged,
-                      decoration: InputDecoration(
-                        hintText: "Search student name or register number...",
-                        prefixIcon: const Icon(Icons.search,
-                            color: AppColors.textSecondary),
-                        suffixIcon: _searchQuery.isNotEmpty
-                            ? IconButton(
-                                icon: const Icon(Icons.clear),
-                                onPressed: () {
-                                  _searchController.clear();
-                                  _onSearchChanged('');
-                                },
-                              )
-                            : null,
+            : _session == null
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Container(
+                        constraints: const BoxConstraints(maxWidth: 420),
+                        padding: const EdgeInsets.all(24),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.lock_clock, size: 48, color: AppColors.absent),
+                            const SizedBox(height: 12),
+                            const Text(
+                              "Afternoon Attendance Closed",
+                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              AttendanceWindowHelper.closedReason(SessionType.afternoon),
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                            ),
+                            const SizedBox(height: 16),
+                            ElevatedButton.icon(
+                              onPressed: () => Navigator.pop(context),
+                              icon: const Icon(Icons.arrow_back),
+                              label: const Text("Back to Dashboard"),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-
-                  // Student List with 4 Statuses: Present, Absent, OD, Bunk
-                  Expanded(
-                    child: _filteredStudents.isEmpty
-                        ? const Center(
-                            child: Text(
-                              "No matching students found.",
-                              style: TextStyle(color: AppColors.textSecondary),
+                  )
+                : Column(
+                    children: [
+                      // Live Window Status Banner
+                      Container(
+                        width: double.infinity,
+                        color: isWindowOpen
+                            ? AppColors.presentLight
+                            : AppColors.absentLight,
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        child: Row(
+                          children: [
+                            Icon(
+                              isWindowOpen ? Icons.lock_open : Icons.lock_clock,
+                              size: 16,
+                              color: isWindowOpen ? AppColors.present : AppColors.absent,
                             ),
-                          )
-                        : ListView.builder(
-                            padding: const EdgeInsets.only(bottom: 12),
-                            itemCount: _filteredStudents.length,
-                            itemBuilder: (context, index) {
-                              final student = _filteredStudents[index];
-                              final status = _attendanceState[student.id];
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                _windowStatus.shortLabel,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: isWindowOpen ? AppColors.present : AppColors.absent,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
 
-                              return StudentAttendanceTile(
-                                student: student,
-                                status: status,
-                                // Exactly 4 statuses: Present, Absent, OD, Bunk
-                                allowedStatuses: const [
-                                  AttendanceStatus.present,
-                                  AttendanceStatus.absent,
-                                  AttendanceStatus.od,
-                                  AttendanceStatus.bunk,
-                                ],
-                                onStatusChanged: (newStatus) {
-                                  setState(() {
-                                    _attendanceState[student.id] = newStatus;
-                                    _hasUnsavedChanges = true;
-                                  });
+                      // Afternoon Metric Strip with 4 Distinct Statuses + Unmarked
+                      Container(
+                        color: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 12),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceAround,
+                          children: [
+                            _countColumn("Total", _allStudents.length.toString(),
+                                AppColors.textPrimary),
+                            _countColumn("Present", _presentCount.toString(),
+                                AppColors.present),
+                            _countColumn("Absent", _absentCount.toString(),
+                                AppColors.absent),
+                            _countColumn("OD", _odCount.toString(), AppColors.od),
+                            _countColumn(
+                                "Bunk", _bunkCount.toString(), AppColors.bunk),
+                            _countColumn("Unmarked", _unmarkedCount.toString(),
+                                AppColors.unmarked),
+                          ],
+                        ),
+                      ),
+                      const Divider(height: 1, color: AppColors.border),
+
+                      // Search Bar
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 10),
+                        child: TextField(
+                          controller: _searchController,
+                          onChanged: _onSearchChanged,
+                          decoration: InputDecoration(
+                            hintText: "Search student name or register number...",
+                            prefixIcon: const Icon(Icons.search,
+                                color: AppColors.textSecondary),
+                            suffixIcon: _searchQuery.isNotEmpty
+                                ? IconButton(
+                                    icon: const Icon(Icons.clear),
+                                    onPressed: () {
+                                      _searchController.clear();
+                                      _onSearchChanged('');
+                                    },
+                                  )
+                                : null,
+                          ),
+                        ),
+                      ),
+
+                      // Student List with 4 Statuses: Present, Absent, OD, Bunk
+                      Expanded(
+                        child: _filteredStudents.isEmpty
+                            ? const Center(
+                                child: Text(
+                                  "No matching students found.",
+                                  style: TextStyle(color: AppColors.textSecondary),
+                                ),
+                              )
+                            : ListView.builder(
+                                padding: const EdgeInsets.only(bottom: 12),
+                                itemCount: _filteredStudents.length,
+                                itemBuilder: (context, index) {
+                                  final student = _filteredStudents[index];
+                                  final status = _attendanceState[student.id];
+
+                                  return StudentAttendanceTile(
+                                    student: student,
+                                    status: status,
+                                    enabled: isWindowOpen,
+                                    // Exactly 4 statuses: Present, Absent, OD, Bunk
+                                    allowedStatuses: const [
+                                      AttendanceStatus.present,
+                                      AttendanceStatus.absent,
+                                      AttendanceStatus.od,
+                                      AttendanceStatus.bunk,
+                                    ],
+                                    onStatusChanged: (newStatus) {
+                                      if (!isWindowOpen) return;
+                                      setState(() {
+                                        _attendanceState[student.id] = newStatus;
+                                        _hasUnsavedChanges = true;
+                                      });
+                                    },
+                                  );
                                 },
-                              );
-                            },
-                          ),
-                  ),
+                              ),
+                      ),
 
-                  // Bottom Action Bar
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
-                      border: Border(top: BorderSide(color: AppColors.border)),
-                    ),
-                    child: Row(
-                      children: [
-                        OutlinedButton.icon(
-                          onPressed: _reviewAndSubmit,
-                          icon: const Icon(Icons.checklist, size: 18),
-                          label: const Text("Review"),
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 14),
-                            side: const BorderSide(color: AppColors.primary),
-                          ),
+                      // Bottom Action Bar
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: const BoxDecoration(
+                          color: Colors.white,
+                          border: Border(top: BorderSide(color: AppColors.border)),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: CustomButton(
-                            text: "Save Afternoon Attendance",
-                            isLoading: _isSaving,
-                            onPressed: _saveAttendance,
-                          ),
+                        child: Row(
+                          children: [
+                            OutlinedButton.icon(
+                              onPressed: isWindowOpen ? _reviewAndSubmit : null,
+                              icon: const Icon(Icons.checklist, size: 18),
+                              label: const Text("Review"),
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 14),
+                                side: const BorderSide(color: AppColors.primary),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: CustomButton(
+                                text: isWindowOpen
+                                    ? "Save Afternoon Attendance"
+                                    : "Marking Window Closed",
+                                isLoading: _isSaving,
+                                onPressed: isWindowOpen ? _saveAttendance : null,
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
       ),
     );
   }

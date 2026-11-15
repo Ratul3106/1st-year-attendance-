@@ -330,6 +330,10 @@ class DemoDataService {
     ).firstOrNull;
   }
 
+  AttendanceSession? getSessionById(String sessionId) {
+    return _sessions.where((s) => s.id == sessionId).firstOrNull;
+  }
+
   List<AttendanceRecord> getSessionRecords(String sessionId) {
     return _records.where((r) => r.sessionId == sessionId).toList();
   }

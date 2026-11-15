@@ -8,6 +8,7 @@ class StudentAttendanceTile extends StatelessWidget {
   final AttendanceStatus? status;
   final ValueChanged<AttendanceStatus> onStatusChanged;
   final List<AttendanceStatus> allowedStatuses;
+  final bool enabled;
 
   const StudentAttendanceTile({
     super.key,
@@ -19,6 +20,7 @@ class StudentAttendanceTile extends StatelessWidget {
       AttendanceStatus.absent,
       AttendanceStatus.od,
     ],
+    this.enabled = true,
   });
 
   Color _getStatusColor(AttendanceStatus st) {
@@ -177,7 +179,7 @@ class StudentAttendanceTile extends StatelessWidget {
               final isBunk = st == AttendanceStatus.bunk;
 
               return InkWell(
-                onTap: () => onStatusChanged(st),
+                onTap: enabled ? () => onStatusChanged(st) : null,
                 borderRadius: BorderRadius.circular(6),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 150),

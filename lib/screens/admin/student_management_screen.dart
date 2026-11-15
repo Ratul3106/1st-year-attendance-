@@ -36,7 +36,8 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
 
   DateTime _selectedDate = DateTime.now();
   String _searchQuery = '';
-  String _statusFilter = 'All'; // 'All', 'Present', 'Absent', 'OD', 'Bunk', 'Not Marked'
+  String _statusFilter =
+      'All'; // 'All', 'Present', 'Absent', 'OD', 'Bunk', 'Not Marked'
   bool _sortAscending = true;
 
   // Pagination
@@ -85,10 +86,12 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
       setState(() {
         _classes = classes;
         if (classes.isNotEmpty) {
-          if (_selectedClass == null || !classes.any((c) => c.id == _selectedClass!.id)) {
+          if (_selectedClass == null ||
+              !classes.any((c) => c.id == _selectedClass!.id)) {
             _selectedClass = classes.first;
           } else {
-            _selectedClass = classes.firstWhere((c) => c.id == _selectedClass!.id);
+            _selectedClass =
+                classes.firstWhere((c) => c.id == _selectedClass!.id);
           }
         } else {
           _selectedClass = null;
@@ -275,7 +278,8 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
 
               if (name.isEmpty || dept.isEmpty || year.isEmpty) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Please fill all class fields.")),
+                  const SnackBar(
+                      content: Text("Please fill all class fields.")),
                 );
                 return;
               }
@@ -335,10 +339,12 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                 ),
                 ElevatedButton.icon(
                   icon: const Icon(Icons.add, size: 14),
-                  label: const Text("Add Class", style: TextStyle(fontSize: 12)),
+                  label:
+                      const Text("Add Class", style: TextStyle(fontSize: 12)),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   ),
                   onPressed: () {
                     Navigator.pop(ctx);
@@ -361,35 +367,45 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                         final isCurrent = _selectedClass?.id == cls.id;
                         return ListTile(
                           leading: CircleAvatar(
-                            backgroundColor: isCurrent ? AppColors.primary : AppColors.primaryLight.withValues(alpha: 0.2),
-                            foregroundColor: isCurrent ? Colors.white : AppColors.primary,
+                            backgroundColor: isCurrent
+                                ? AppColors.primary
+                                : AppColors.primaryLight.withValues(alpha: 0.2),
+                            foregroundColor:
+                                isCurrent ? Colors.white : AppColors.primary,
                             child: const Icon(Icons.school, size: 20),
                           ),
                           title: Text(
                             cls.className,
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
-                              color: isCurrent ? AppColors.primary : AppColors.textPrimary,
+                              color: isCurrent
+                                  ? AppColors.primary
+                                  : AppColors.textPrimary,
                             ),
                           ),
-                          subtitle: Text("${cls.department} • ${cls.academicYear}"),
+                          subtitle:
+                              Text("${cls.department} • ${cls.academicYear}"),
                           trailing: isCurrent
                               ? const Chip(
-                                  label: Text("Active", style: TextStyle(fontSize: 10, color: Colors.white)),
+                                  label: Text("Active",
+                                      style: TextStyle(
+                                          fontSize: 10, color: Colors.white)),
                                   backgroundColor: AppColors.primary,
                                   visualDensity: VisualDensity.compact,
                                 )
                               : OutlinedButton(
                                   style: OutlinedButton.styleFrom(
                                     visualDensity: VisualDensity.compact,
-                                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 8),
                                   ),
                                   onPressed: () {
                                     Navigator.pop(ctx);
                                     setState(() => _selectedClass = cls);
                                     _loadClassStudentsAndAttendance(cls);
                                   },
-                                  child: const Text("Select", style: TextStyle(fontSize: 11)),
+                                  child: const Text("Select",
+                                      style: TextStyle(fontSize: 11)),
                                 ),
                           onTap: () {
                             Navigator.pop(ctx);
@@ -566,7 +582,8 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
               ElevatedButton.icon(
                 icon: const Icon(Icons.visibility),
                 label: const Text("Generate Preview"),
-                style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+                style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary),
                 onPressed: () {
                   Navigator.pop(ctx);
                   _generateAndShowReportPreview(
@@ -961,7 +978,9 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
   void _showAddStudentDialog() {
     if (_classes.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please create a class first before adding students.")),
+        const SnackBar(
+            content:
+                Text("Please create a class first before adding students.")),
       );
       _showAddClassDialog();
       return;
@@ -1005,12 +1024,14 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                     decoration: const InputDecoration(
                       labelText: "Enroll In Class",
                       border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      contentPadding:
+                          EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                     ),
                     items: _classes.map((cls) {
                       return DropdownMenuItem<String>(
                         value: cls.id,
-                        child: Text(cls.displayName, overflow: TextOverflow.ellipsis),
+                        child: Text(cls.displayName,
+                            overflow: TextOverflow.ellipsis),
                       );
                     }).toList(),
                     onChanged: (val) {
@@ -1030,13 +1051,16 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
               ElevatedButton.icon(
                 icon: const Icon(Icons.check, size: 16),
                 label: const Text("Save Student"),
-                style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+                style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary),
                 onPressed: () async {
                   final reg = _regNumController.text.trim();
                   final name = _nameController.text.trim();
                   if (reg.isEmpty || name.isEmpty) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Please enter both register number and name.")),
+                      const SnackBar(
+                          content: Text(
+                              "Please enter both register number and name.")),
                     );
                     return;
                   }
@@ -1054,14 +1078,16 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                       studentId: created.id,
                     );
 
-                    final targetClass = _classes.firstWhere((c) => c.id == enrollClassId);
+                    final targetClass =
+                        _classes.firstWhere((c) => c.id == enrollClassId);
                     setState(() => _selectedClass = targetClass);
                     await _loadClassStudentsAndAttendance(targetClass);
 
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Text("Student '$name' added & enrolled into ${targetClass.className}!"),
+                          content: Text(
+                              "Student '$name' added & enrolled into ${targetClass.className}!"),
                           backgroundColor: AppColors.present,
                         ),
                       );
@@ -1119,7 +1145,8 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                 studentId: student.id,
               );
               if (mounted) Navigator.pop(ctx);
-              final targetClass = _classes.firstWhere((c) => c.id == selectedId);
+              final targetClass =
+                  _classes.firstWhere((c) => c.id == selectedId);
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(
@@ -1242,20 +1269,24 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                                 const Text(
                                   "Class & Session Selector",
                                   style: TextStyle(
-                                      fontWeight: FontWeight.bold, fontSize: 14),
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14),
                                 ),
                                 const Spacer(),
                                 // Manage Classes Button
                                 OutlinedButton.icon(
-                                  icon: const Icon(Icons.class_outlined, size: 14),
-                                  label: const Text("Manage Classes", style: TextStyle(fontSize: 12)),
+                                  icon: const Icon(Icons.class_outlined,
+                                      size: 14),
+                                  label: const Text("Manage Classes",
+                                      style: TextStyle(fontSize: 12)),
                                   onPressed: _showManageClassesDialog,
                                 ),
                                 const SizedBox(width: 8),
                                 // Create Class Button
                                 ElevatedButton.icon(
                                   icon: const Icon(Icons.add, size: 14),
-                                  label: const Text("Add Class", style: TextStyle(fontSize: 12)),
+                                  label: const Text("Add Class",
+                                      style: TextStyle(fontSize: 12)),
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: AppColors.primaryLight,
                                     foregroundColor: Colors.white,
@@ -1269,7 +1300,8 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                                 ElevatedButton.icon(
                                   icon: const Icon(Icons.description_outlined,
                                       size: 14),
-                                  label: const Text("Overall Report", style: TextStyle(fontSize: 12)),
+                                  label: const Text("Overall Report",
+                                      style: TextStyle(fontSize: 12)),
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: AppColors.primary,
                                     padding: const EdgeInsets.symmetric(
@@ -1287,10 +1319,13 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                                 Expanded(
                                   flex: 3,
                                   child: DropdownButtonFormField<String>(
-                                    value: (_selectedClass != null &&
-                                            _classes.any((c) => c.id == _selectedClass!.id))
+                                    initialValue: (_selectedClass != null &&
+                                            _classes.any((c) =>
+                                                c.id == _selectedClass!.id))
                                         ? _selectedClass!.id
-                                        : (_classes.isNotEmpty ? _classes.first.id : null),
+                                        : (_classes.isNotEmpty
+                                            ? _classes.first.id
+                                            : null),
                                     decoration: const InputDecoration(
                                       labelText: "Active Class",
                                       border: OutlineInputBorder(),
@@ -1307,11 +1342,14 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                                     }).toList(),
                                     onChanged: (newId) {
                                       if (newId != null) {
-                                        final matches = _classes.where((c) => c.id == newId);
+                                        final matches = _classes
+                                            .where((c) => c.id == newId);
                                         if (matches.isNotEmpty) {
                                           final matched = matches.first;
-                                          setState(() => _selectedClass = matched);
-                                          _loadClassStudentsAndAttendance(matched);
+                                          setState(
+                                              () => _selectedClass = matched);
+                                          _loadClassStudentsAndAttendance(
+                                              matched);
                                         }
                                       }
                                     },
@@ -1327,8 +1365,8 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                                       decoration: const InputDecoration(
                                         labelText: "Attendance Date",
                                         border: OutlineInputBorder(),
-                                        suffixIcon:
-                                            Icon(Icons.calendar_today, size: 18),
+                                        suffixIcon: Icon(Icons.calendar_today,
+                                            size: 18),
                                         contentPadding: EdgeInsets.symmetric(
                                             horizontal: 12, vertical: 10),
                                       ),
@@ -1388,11 +1426,13 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                                     value: 'Present', child: Text("Present")),
                                 DropdownMenuItem(
                                     value: 'Absent', child: Text("Absent")),
-                                DropdownMenuItem(value: 'OD', child: Text("OD")),
+                                DropdownMenuItem(
+                                    value: 'OD', child: Text("OD")),
                                 DropdownMenuItem(
                                     value: 'Bunk', child: Text("Bunk")),
                                 DropdownMenuItem(
-                                    value: 'Not Marked', child: Text("Not Marked")),
+                                    value: 'Not Marked',
+                                    child: Text("Not Marked")),
                               ],
                               onChanged: (v) {
                                 if (v != null) {
@@ -1409,7 +1449,8 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                                   size: 18),
                               tooltip: "Sort Reg No",
                               onPressed: () {
-                                setState(() => _sortAscending = !_sortAscending);
+                                setState(
+                                    () => _sortAscending = !_sortAscending);
                                 _applyFilterAndSort();
                               },
                             ),
@@ -1432,8 +1473,8 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                             SingleChildScrollView(
                               scrollDirection: Axis.horizontal,
                               child: DataTable(
-                                headingRowColor:
-                                    WidgetStateProperty.all(AppColors.background),
+                                headingRowColor: WidgetStateProperty.all(
+                                    AppColors.background),
                                 columns: const [
                                   DataColumn(
                                       label: Text("S.No",
@@ -1468,7 +1509,8 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                                           style: TextStyle(
                                               fontWeight: FontWeight.bold))),
                                 ],
-                                rows: pagedStudents.asMap().entries.map((entry) {
+                                rows:
+                                    pagedStudents.asMap().entries.map((entry) {
                                   final index = startIndex + entry.key + 1;
                                   final student = entry.value;
                                   final mRec = _morningRecords[student.id];
@@ -1495,11 +1537,14 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                                       DataCell(_statusBadge(mStatusStr)),
                                       DataCell(_statusBadge(aStatusStr)),
                                       DataCell(Text(overall,
-                                          style: const TextStyle(fontSize: 12))),
+                                          style:
+                                              const TextStyle(fontSize: 12))),
                                       DataCell(
                                         IconButton(
-                                          icon: const Icon(Icons.add_circle_outline,
-                                              size: 18, color: AppColors.primary),
+                                          icon: const Icon(
+                                              Icons.add_circle_outline,
+                                              size: 18,
+                                              color: AppColors.primary),
                                           tooltip: "Enroll to another class",
                                           onPressed: () =>
                                               _showEnrollDialog(student),
@@ -1531,10 +1576,13 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                                       const SizedBox(height: 12),
                                       if (_classStudents.isEmpty)
                                         ElevatedButton.icon(
-                                          icon: const Icon(Icons.person_add, size: 16),
-                                          label: const Text("Enroll First Student"),
+                                          icon: const Icon(Icons.person_add,
+                                              size: 16),
+                                          label: const Text(
+                                              "Enroll First Student"),
                                           style: ElevatedButton.styleFrom(
-                                              backgroundColor: AppColors.primary),
+                                              backgroundColor:
+                                                  AppColors.primary),
                                           onPressed: _showAddStudentDialog,
                                         ),
                                     ],
@@ -1551,7 +1599,8 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                                     top: BorderSide(color: AppColors.border)),
                               ),
                               child: Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
                                   Text(
                                     "Showing ${totalFiltered == 0 ? 0 : startIndex + 1} - $endIndex of $totalFiltered students",
@@ -1564,7 +1613,8 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                                       IconButton(
                                         icon: const Icon(Icons.chevron_left),
                                         onPressed: _currentPage > 1
-                                            ? () => setState(() => _currentPage--)
+                                            ? () =>
+                                                setState(() => _currentPage--)
                                             : null,
                                       ),
                                       Text("$_currentPage / $totalPages",
@@ -1574,7 +1624,8 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                                       IconButton(
                                         icon: const Icon(Icons.chevron_right),
                                         onPressed: _currentPage < totalPages
-                                            ? () => setState(() => _currentPage++)
+                                            ? () =>
+                                                setState(() => _currentPage++)
                                             : null,
                                       ),
                                     ],
@@ -1612,7 +1663,8 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.school_outlined, size: 56, color: AppColors.primary),
+            const Icon(Icons.school_outlined,
+                size: 56, color: AppColors.primary),
             const SizedBox(height: 16),
             const Text(
               "No Classes Found",
@@ -1630,7 +1682,8 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
               label: const Text("Create First Class"),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
               ),
               onPressed: _showAddClassDialog,
             ),
@@ -1639,7 +1692,8 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
               icon: const Icon(Icons.auto_awesome),
               label: const Text("Seed Sample Classes & Students"),
               style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               ),
               onPressed: _seedSampleData,
             ),

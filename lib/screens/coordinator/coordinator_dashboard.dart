@@ -1,9 +1,12 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:student_attendance_system/core/constants/app_colors.dart';
+import 'package:student_attendance_system/core/utils/attendance_window_helper.dart';
 import 'package:student_attendance_system/models/class_model.dart';
 import 'package:student_attendance_system/models/student.dart';
 import 'package:student_attendance_system/models/attendance_session.dart';
+import 'package:student_attendance_system/models/attendance_record.dart';
 import 'package:student_attendance_system/models/daily_report.dart';
 import 'package:student_attendance_system/services/attendance_service.dart';
 import 'package:student_attendance_system/services/report_service.dart';
@@ -36,12 +39,28 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
   int _afternoonMarked = 0;
 
   bool _isLoading = true;
-  final String _todayDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
+  late DateTime _currentIst;
+  Timer? _clockTimer;
+
+  String get _todayDate => AttendanceWindowHelper.todayIstString(_currentIst);
 
   @override
   void initState() {
     super.initState();
+    _currentIst = AttendanceWindowHelper.nowIst();
+    _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      setState(() {
+        _currentIst = AttendanceWindowHelper.nowIst();
+      });
+    });
     _loadAssignedClasses();
+  }
+
+  @override
+  void dispose() {
+    _clockTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadAssignedClasses() async {
@@ -72,19 +91,23 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
     try {
       final students = await _attendanceService.getEnrolledStudents(cls.id);
 
-      final mSess = await _attendanceService.getOrCreateSession(
+      final mSess = await _attendanceService.getExistingSession(
         classId: cls.id,
         date: _todayDate,
         sessionType: SessionType.morning,
       );
-      final mRecords = await _attendanceService.getSessionRecords(mSess.id);
+      final mRecords = mSess != null
+          ? await _attendanceService.getSessionRecords(mSess.id)
+          : <AttendanceRecord>[];
 
-      final aSess = await _attendanceService.getOrCreateSession(
+      final aSess = await _attendanceService.getExistingSession(
         classId: cls.id,
         date: _todayDate,
         sessionType: SessionType.afternoon,
       );
-      final aRecords = await _attendanceService.getSessionRecords(aSess.id);
+      final aRecords = aSess != null
+          ? await _attendanceService.getSessionRecords(aSess.id)
+          : <AttendanceRecord>[];
 
       final report = await _reportService.getDailyReport(
         classId: cls.id,
@@ -101,6 +124,60 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
     } catch (_) {
       setState(() => _isLoading = false);
     }
+  }
+
+  void _showWindowClosedDialog(SessionType sessionType) {
+    final title = sessionType == SessionType.morning
+        ? "Morning Attendance Closed"
+        : "Afternoon Attendance Closed";
+    final reason = AttendanceWindowHelper.closedReason(sessionType, _currentIst);
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Row(
+          children: [
+            const Icon(Icons.lock_clock, color: AppColors.absent),
+            const SizedBox(width: 8),
+            Expanded(child: Text(title, style: const TextStyle(fontSize: 17))),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(reason, style: const TextStyle(fontSize: 13)),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: AppColors.background,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Allowed Marking Timings (IST):",
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                  ),
+                  SizedBox(height: 4),
+                  Text("• Morning Session: 8:15 AM – 8:45 AM", style: TextStyle(fontSize: 12)),
+                  Text("• Afternoon Session: 12:20 PM – 12:50 PM", style: TextStyle(fontSize: 12)),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("OK"),
+          ),
+        ],
+      ),
+    );
   }
 
   String _getSessionStatus(int marked, int total) {
@@ -296,72 +373,126 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
                   ),
 
                   const SizedBox(height: 20),
-                  const Text(
-                    "Attendance Sessions & Status",
-                    style: TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textPrimary,
-                    ),
+                  Row(
+                    children: [
+                      const Expanded(
+                        child: Text(
+                          "Attendance Sessions & Status",
+                          style: TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.access_time, size: 14, color: AppColors.primary),
+                            const SizedBox(width: 4),
+                            Text(
+                              "${DateFormat('hh:mm:ss a').format(_currentIst)} IST",
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 12),
 
                   // Morning Session Button Card
-                  _buildSessionCard(
-                    title: "Morning Attendance",
-                    subtitle: "Allowed Statuses: Present, Absent, OD",
-                    statusLabel: _getSessionStatus(_morningMarked, total),
-                    statusColor: _getSessionStatusColor(_morningMarked, total),
-                    markedCount: _morningMarked,
-                    unmarkedCount: mUnmarked > 0 ? mUnmarked : 0,
-                    icon: Icons.wb_sunny_outlined,
-                    color: Colors.amber.shade700,
-                    onTap: _selectedClass == null
-                        ? null
-                        : () async {
-                            await Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => MorningAttendanceScreen(
-                                  selectedClass: _selectedClass!,
-                                  date: _todayDate,
-                                ),
-                              ),
-                            );
-                            if (mounted && _selectedClass != null) {
-                              _loadClassSessionData(_selectedClass!);
-                            }
-                          },
+                  Builder(
+                    builder: (context) {
+                      final morningWindow = AttendanceWindowHelper.getWindowStatus(
+                        SessionType.morning,
+                        _currentIst,
+                      );
+                      return _buildSessionCard(
+                        title: "Morning Attendance",
+                        subtitle: "Window: ${morningWindow.timeRangeLabel} • Allowed: Present, Absent, OD",
+                        statusLabel: _getSessionStatus(_morningMarked, total),
+                        statusColor: _getSessionStatusColor(_morningMarked, total),
+                        markedCount: _morningMarked,
+                        unmarkedCount: mUnmarked > 0 ? mUnmarked : 0,
+                        icon: Icons.wb_sunny_outlined,
+                        color: Colors.amber.shade700,
+                        windowStatus: morningWindow,
+                        onTap: _selectedClass == null
+                            ? null
+                            : () async {
+                                if (!AttendanceWindowHelper.isSessionOpen(SessionType.morning)) {
+                                  _showWindowClosedDialog(SessionType.morning);
+                                  return;
+                                }
+                                await Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => MorningAttendanceScreen(
+                                      selectedClass: _selectedClass!,
+                                      date: _todayDate,
+                                    ),
+                                  ),
+                                );
+                                if (mounted && _selectedClass != null) {
+                                  _loadClassSessionData(_selectedClass!);
+                                }
+                              },
+                      );
+                    },
                   ),
 
                   const SizedBox(height: 12),
 
                   // Afternoon Session Button Card
-                  _buildSessionCard(
-                    title: "Afternoon Attendance",
-                    subtitle: "Allowed Statuses: Present, Absent, OD, Bunk",
-                    statusLabel: _getSessionStatus(_afternoonMarked, total),
-                    statusColor: _getSessionStatusColor(_afternoonMarked, total),
-                    markedCount: _afternoonMarked,
-                    unmarkedCount: aUnmarked > 0 ? aUnmarked : 0,
-                    icon: Icons.brightness_6_outlined,
-                    color: Colors.purple.shade700,
-                    onTap: _selectedClass == null
-                        ? null
-                        : () async {
-                            await Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => AfternoonAttendanceScreen(
-                                  selectedClass: _selectedClass!,
-                                  date: _todayDate,
-                                ),
-                              ),
-                            );
-                            if (mounted && _selectedClass != null) {
-                              _loadClassSessionData(_selectedClass!);
-                            }
-                          },
+                  Builder(
+                    builder: (context) {
+                      final afternoonWindow = AttendanceWindowHelper.getWindowStatus(
+                        SessionType.afternoon,
+                        _currentIst,
+                      );
+                      return _buildSessionCard(
+                        title: "Afternoon Attendance",
+                        subtitle: "Window: ${afternoonWindow.timeRangeLabel} • Allowed: Present, Absent, OD, Bunk",
+                        statusLabel: _getSessionStatus(_afternoonMarked, total),
+                        statusColor: _getSessionStatusColor(_afternoonMarked, total),
+                        markedCount: _afternoonMarked,
+                        unmarkedCount: aUnmarked > 0 ? aUnmarked : 0,
+                        icon: Icons.brightness_6_outlined,
+                        color: Colors.purple.shade700,
+                        windowStatus: afternoonWindow,
+                        onTap: _selectedClass == null
+                            ? null
+                            : () async {
+                                if (!AttendanceWindowHelper.isSessionOpen(SessionType.afternoon)) {
+                                  _showWindowClosedDialog(SessionType.afternoon);
+                                  return;
+                                }
+                                await Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => AfternoonAttendanceScreen(
+                                      selectedClass: _selectedClass!,
+                                      date: _todayDate,
+                                    ),
+                                  ),
+                                );
+                                if (mounted && _selectedClass != null) {
+                                  _loadClassSessionData(_selectedClass!);
+                                }
+                              },
+                      );
+                    },
                   ),
 
                   const SizedBox(height: 12),
@@ -416,13 +547,21 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
     required int unmarkedCount,
     required IconData icon,
     required Color color,
+    required AttendanceWindowStatus windowStatus,
     VoidCallback? onTap,
   }) {
+    final bool isOpen = windowStatus.isOpen;
+    final Color windowColor = isOpen ? AppColors.present : AppColors.absent;
+
     return Card(
       elevation: 0,
+      color: isOpen ? Colors.white : Colors.grey.shade50,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: const BorderSide(color: AppColors.border),
+        side: BorderSide(
+          color: isOpen ? AppColors.present.withValues(alpha: 0.6) : AppColors.border,
+          width: isOpen ? 1.5 : 1.0,
+        ),
       ),
       child: InkWell(
         onTap: onTap,
@@ -436,10 +575,14 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
                   Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: color.withValues(alpha: 0.12),
+                      color: (isOpen ? color : AppColors.unmarked).withValues(alpha: 0.12),
                       shape: BoxShape.circle,
                     ),
-                    child: Icon(icon, color: color, size: 26),
+                    child: Icon(
+                      isOpen ? icon : Icons.lock_outline,
+                      color: isOpen ? color : AppColors.textSecondary,
+                      size: 26,
+                    ),
                   ),
                   const SizedBox(width: 14),
                   Expanded(
@@ -448,10 +591,10 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
                       children: [
                         Text(
                           title,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 16,
-                            color: AppColors.textPrimary,
+                            color: isOpen ? AppColors.textPrimary : AppColors.textSecondary,
                           ),
                         ),
                         const SizedBox(height: 2),
@@ -479,7 +622,37 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: windowColor.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: windowColor.withValues(alpha: 0.25)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      isOpen ? Icons.lock_open : Icons.lock_clock,
+                      size: 14,
+                      color: windowColor,
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        windowStatus.shortLabel,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: windowColor,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 10),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(

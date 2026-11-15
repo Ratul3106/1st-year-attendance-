@@ -89,7 +89,8 @@ class _AttendanceReportPreviewDialogState
     } catch (e) {
       if (mounted) {
         setState(() {
-          _downloadMessage = "Export failed: ${e.toString().replaceAll('Exception: ', '')}";
+          _downloadMessage =
+              "Export failed: ${e.toString().replaceAll('Exception: ', '')}";
         });
       }
     } finally {
@@ -179,7 +180,8 @@ class _AttendanceReportPreviewDialogState
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.close, color: AppColors.textSecondary),
+                    icon:
+                        const Icon(Icons.close, color: AppColors.textSecondary),
                     onPressed: () => Navigator.of(context).pop(),
                   ),
                 ],
@@ -189,12 +191,15 @@ class _AttendanceReportPreviewDialogState
             // Error / Notice banner if any
             if (_downloadMessage != null)
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 color: AppColors.absentLight,
                 child: Text(
                   _downloadMessage!,
                   style: const TextStyle(
-                      color: AppColors.absent, fontSize: 12, fontWeight: FontWeight.bold),
+                      color: AppColors.absent,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold),
                 ),
               ),
 
@@ -232,7 +237,8 @@ class _AttendanceReportPreviewDialogState
                           "Click tabs below to filter categories",
                           style: TextStyle(
                               fontSize: 11,
-                              color: AppColors.textSecondary.withValues(alpha: 0.8)),
+                              color: AppColors.textSecondary
+                                  .withValues(alpha: 0.8)),
                         ),
                       ],
                     ),
@@ -330,7 +336,9 @@ class _AttendanceReportPreviewDialogState
                             child: CircularProgressIndicator(
                                 strokeWidth: 2, color: Colors.white))
                         : const Icon(Icons.table_chart, size: 16),
-                    label: Text(_isDownloadingExcel ? "Generating..." : "Download Excel"),
+                    label: Text(_isDownloadingExcel
+                        ? "Generating..."
+                        : "Download Excel"),
                     onPressed: (_isDownloadingPdf || _isDownloadingExcel)
                         ? null
                         : () => _download('excel'),
@@ -354,7 +362,8 @@ class _AttendanceReportPreviewDialogState
                             child: CircularProgressIndicator(
                                 strokeWidth: 2, color: Colors.white))
                         : const Icon(Icons.picture_as_pdf, size: 16),
-                    label: Text(_isDownloadingPdf ? "Generating..." : "Download PDF"),
+                    label: Text(
+                        _isDownloadingPdf ? "Generating..." : "Download PDF"),
                     onPressed: (_isDownloadingPdf || _isDownloadingExcel)
                         ? null
                         : () => _download('pdf'),
@@ -505,9 +514,13 @@ class _AttendanceReportPreviewDialogState
                   runSpacing: 4,
                   alignment: WrapAlignment.center,
                   children: [
-                    _chip("Both Pres: ${a.presentBothSessions}", AppColors.present),
-                    _chip("M. Pres → A. Abs: ${a.presentMorningAbsentAfternoon}", AppColors.warning),
-                    _chip("Both Abs: ${a.absentBothSessions}", AppColors.absent),
+                    _chip("Both Pres: ${a.presentBothSessions}",
+                        AppColors.present),
+                    _chip(
+                        "M. Pres → A. Abs: ${a.presentMorningAbsentAfternoon}",
+                        AppColors.warning),
+                    _chip(
+                        "Both Abs: ${a.absentBothSessions}", AppColors.absent),
                   ],
                 ),
               ],
@@ -565,20 +578,21 @@ class _AttendanceReportPreviewDialogState
       ),
       child: Text(
         text,
-        style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: color),
+        style:
+            TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: color),
       ),
     );
   }
 
   Widget _buildStudentTable(List<StudentReportItem> items) {
     if (items.isEmpty) {
-      return Center(
+      return const Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.inbox_outlined, size: 36, color: AppColors.unmarked),
-            const SizedBox(height: 8),
-            const Text(
+            Icon(Icons.inbox_outlined, size: 36, color: AppColors.unmarked),
+            SizedBox(height: 8),
+            Text(
               "No students in this category for the selected parameters.",
               style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
             ),
@@ -603,24 +617,51 @@ class _AttendanceReportPreviewDialogState
             dataRowMinHeight: 36,
             dataRowMaxHeight: 40,
             columns: const [
-              DataColumn(label: Text("S.No", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11))),
-              DataColumn(label: Text("Reg No", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11))),
-              DataColumn(label: Text("Student Name", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11))),
-              DataColumn(label: Text("Class", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11))),
-              DataColumn(label: Text("Date", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11))),
-              DataColumn(label: Text("Session", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11))),
-              DataColumn(label: Text("Status", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11))),
+              DataColumn(
+                  label: Text("S.No",
+                      style: TextStyle(
+                          fontWeight: FontWeight.bold, fontSize: 11))),
+              DataColumn(
+                  label: Text("Reg No",
+                      style: TextStyle(
+                          fontWeight: FontWeight.bold, fontSize: 11))),
+              DataColumn(
+                  label: Text("Student Name",
+                      style: TextStyle(
+                          fontWeight: FontWeight.bold, fontSize: 11))),
+              DataColumn(
+                  label: Text("Class",
+                      style: TextStyle(
+                          fontWeight: FontWeight.bold, fontSize: 11))),
+              DataColumn(
+                  label: Text("Date",
+                      style: TextStyle(
+                          fontWeight: FontWeight.bold, fontSize: 11))),
+              DataColumn(
+                  label: Text("Session",
+                      style: TextStyle(
+                          fontWeight: FontWeight.bold, fontSize: 11))),
+              DataColumn(
+                  label: Text("Status",
+                      style: TextStyle(
+                          fontWeight: FontWeight.bold, fontSize: 11))),
             ],
             rows: items.map((item) {
               return DataRow(
                 cells: [
-                  DataCell(Text("${item.sNo}", style: const TextStyle(fontSize: 11))),
+                  DataCell(Text("${item.sNo}",
+                      style: const TextStyle(fontSize: 11))),
                   DataCell(Text(item.registerNumber,
-                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 11))),
-                  DataCell(Text(item.studentName, style: const TextStyle(fontSize: 11))),
-                  DataCell(Text(item.className, style: const TextStyle(fontSize: 11))),
-                  DataCell(Text(item.date, style: const TextStyle(fontSize: 11))),
-                  DataCell(Text(item.session, style: const TextStyle(fontSize: 11))),
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w600, fontSize: 11))),
+                  DataCell(Text(item.studentName,
+                      style: const TextStyle(fontSize: 11))),
+                  DataCell(Text(item.className,
+                      style: const TextStyle(fontSize: 11))),
+                  DataCell(
+                      Text(item.date, style: const TextStyle(fontSize: 11))),
+                  DataCell(
+                      Text(item.session, style: const TextStyle(fontSize: 11))),
                   DataCell(_statusBadge(item.status)),
                 ],
               );
@@ -681,4 +722,3 @@ class _AttendanceReportPreviewDialogState
     );
   }
 }
-

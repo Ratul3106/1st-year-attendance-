@@ -435,10 +435,11 @@ class _SendWhatsAppReportDialogState extends State<SendWhatsAppReportDialog> {
                                                                 fontSize: 12))),
                                                   ],
                                                   onChanged: (v) {
-                                                    if (v != null)
+                                                    if (v != null) {
                                                       setState(() =>
                                                           _selectedReportType =
                                                               v);
+                                                    }
                                                   },
                                                 ),
                                               ),

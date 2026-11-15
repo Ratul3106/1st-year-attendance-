@@ -11,12 +11,11 @@ import 'package:student_attendance_system/models/student.dart';
 import 'package:student_attendance_system/models/class_model.dart';
 import 'package:student_attendance_system/models/attendance_session.dart';
 import 'package:student_attendance_system/models/attendance_record.dart';
-import 'package:student_attendance_system/services/admin_service.dart';
-import 'package:student_attendance_system/services/attendance_service.dart';
 import 'package:student_attendance_system/services/demo_data_service.dart';
 
 class WhatsAppNotificationService {
-  static final WhatsAppNotificationService instance = WhatsAppNotificationService._internal();
+  static final WhatsAppNotificationService instance =
+      WhatsAppNotificationService._internal();
 
   WhatsAppNotificationService._internal() {
     _initDemoRecipients();
@@ -55,7 +54,10 @@ class WhatsAppNotificationService {
         designation: 'Class Coordinator (CSE-A)',
         phoneNumber: '+919876543211',
         assignedClassIds: ['class-cse-1a', 'class-cse-1b'],
-        assignedClassNames: ['1st Year - CSE (Sec A)', '1st Year - CSE (Sec B)'],
+        assignedClassNames: [
+          '1st Year - CSE (Sec A)',
+          '1st Year - CSE (Sec B)'
+        ],
         reportTypes: 'both',
         sessionPreferences: 'combined',
         active: true,
@@ -79,7 +81,10 @@ class WhatsAppNotificationService {
         designation: 'Head of Department (CSE)',
         phoneNumber: '+919876543222',
         assignedClassIds: ['class-cse-1a', 'class-cse-1b'],
-        assignedClassNames: ['1st Year - CSE (Sec A)', '1st Year - CSE (Sec B)'],
+        assignedClassNames: [
+          '1st Year - CSE (Sec A)',
+          '1st Year - CSE (Sec B)'
+        ],
         reportTypes: 'final',
         sessionPreferences: 'combined',
         active: true,
@@ -136,7 +141,8 @@ class WhatsAppNotificationService {
           .from('whatsapp_config')
           .upsert(newSettings.toJson(), onConflict: 'id');
     } catch (e) {
-      debugPrint('[WhatsAppService] Error saving settings to whatsapp_config: $e');
+      debugPrint(
+          '[WhatsAppService] Error saving settings to whatsapp_config: $e');
       try {
         await _supabase!
             .from('whatsapp_settings')
@@ -182,7 +188,8 @@ class WhatsAppNotificationService {
     final toSave = recipient.copyWith(phoneNumber: normalized);
 
     if (SupabaseConfig.isDemoMode) {
-      final idx = _demoAuthorizedRecipients.indexWhere((r) => r.id == toSave.id);
+      final idx =
+          _demoAuthorizedRecipients.indexWhere((r) => r.id == toSave.id);
       if (idx != -1) {
         _demoAuthorizedRecipients[idx] = toSave;
       } else {
@@ -205,7 +212,10 @@ class WhatsAppNotificationService {
       }, onConflict: 'id');
 
       // Update class assignments
-      await _supabase!.from('whatsapp_recipient_classes').delete().eq('recipient_id', toSave.id);
+      await _supabase!
+          .from('whatsapp_recipient_classes')
+          .delete()
+          .eq('recipient_id', toSave.id);
       if (toSave.assignedClassIds.isEmpty) {
         await _supabase!.from('whatsapp_recipient_classes').insert({
           'recipient_id': toSave.id,
@@ -242,45 +252,54 @@ class WhatsAppNotificationService {
     if (SupabaseConfig.isDemoMode) {
       final idx = _demoAuthorizedRecipients.indexWhere((r) => r.id == id);
       if (idx != -1) {
-        _demoAuthorizedRecipients[idx] = _demoAuthorizedRecipients[idx].copyWith(active: active);
+        _demoAuthorizedRecipients[idx] =
+            _demoAuthorizedRecipients[idx].copyWith(active: active);
       }
       return;
     }
 
     try {
-      await _supabase!.from('whatsapp_recipients').update({'active': active}).eq('id', id);
+      await _supabase!
+          .from('whatsapp_recipients')
+          .update({'active': active}).eq('id', id);
     } catch (e) {
       debugPrint('[WhatsAppService] Error toggling recipient status: $e');
     }
   }
 
   // 3. WhatsApp API Test Message Connection
-  Future<Map<String, dynamic>> testWhatsAppConnection(String recipientPhone) async {
+  Future<Map<String, dynamic>> testWhatsAppConnection(
+      String recipientPhone) async {
     final cleanPhone = normalizePhoneNumber(recipientPhone);
     if (cleanPhone.length < 10) {
       return {
         'success': false,
-        'error': 'Invalid phone number. Please enter a valid international number with country code (e.g. +91 98765 43210).',
+        'error':
+            'Invalid phone number. Please enter a valid international number with country code (e.g. +91 98765 43210).',
       };
     }
 
     // Attempt direct dispatch via local Personal WhatsApp Worker daemon
     try {
       final localUrl = Uri.parse('http://127.0.0.1:3001/api/test-message');
-      final resp = await http.post(
-        localUrl,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'phone': cleanPhone,
-          'message': '🎓 Vel Tech High Tech Attendance System — WhatsApp Test Connection Successful! ✅',
-        }),
-      ).timeout(const Duration(seconds: 45));
+      final resp = await http
+          .post(
+            localUrl,
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'phone': cleanPhone,
+              'message':
+                  '🎓 Vel Tech High Tech Attendance System — WhatsApp Test Connection Successful! ✅',
+            }),
+          )
+          .timeout(const Duration(seconds: 45));
 
       if (resp.statusCode == 200) {
         final data = jsonDecode(resp.body) as Map<String, dynamic>;
         return {
           'success': true,
-          'message': data['message'] ?? 'Test message dispatched successfully to $cleanPhone via Personal WhatsApp!',
+          'message': data['message'] ??
+              'Test message dispatched successfully to $cleanPhone via Personal WhatsApp!',
           'messageIds': data['messageIds'],
         };
       } else {
@@ -291,7 +310,8 @@ class WhatsAppNotificationService {
         };
       }
     } catch (e) {
-      debugPrint('[WhatsAppService] Local worker daemon not reachable directly: $e');
+      debugPrint(
+          '[WhatsAppService] Local worker daemon not reachable directly: $e');
     }
 
     // Fallback: Queue in Supabase whatsapp_outbox
@@ -302,18 +322,21 @@ class WhatsAppNotificationService {
           'recipient_name': 'Administrator',
           'notification_type': 'test_message',
           'payload': {
-            'message_text': '🎓 Vel Tech High Tech Attendance System — WhatsApp Test Connection Successful! ✅',
+            'message_text':
+                '🎓 Vel Tech High Tech Attendance System — WhatsApp Test Connection Successful! ✅',
           },
           'status': 'pending',
         });
         return {
           'success': true,
-          'message': 'Test message queued for delivery to $cleanPhone. The personal WhatsApp background daemon will send it.',
+          'message':
+              'Test message queued for delivery to $cleanPhone. The personal WhatsApp background daemon will send it.',
         };
       } catch (err) {
         return {
           'success': false,
-          'error': 'Personal WhatsApp daemon is offline. Please start it using "npm start" in whatsapp-service.',
+          'error':
+              'Personal WhatsApp daemon is offline. Please start it using "npm start" in whatsapp-service.',
         };
       }
     }
@@ -335,33 +358,39 @@ class WhatsAppNotificationService {
     final dateStr = DateFormat('yyyy-MM-dd').format(reportDate);
     final settings = await getSettings();
     final phone = normalizePhoneNumber(targetPhone ?? settings.adminPhone);
-    final name = (adminName != null && adminName.isNotEmpty) ? adminName : settings.adminName;
+    final name = (adminName != null && adminName.isNotEmpty)
+        ? adminName
+        : settings.adminName;
 
     if (phone.length < 10) {
       return {
         'success': false,
-        'error': 'Please provide a valid Admin WhatsApp number with country code (e.g. +91 98765 43200).',
+        'error':
+            'Please provide a valid Admin WhatsApp number with country code (e.g. +91 98765 43200).',
       };
     }
 
     // 1. Direct dispatch via local Personal WhatsApp Worker daemon HTTP API
     try {
       final localUrl = Uri.parse('http://127.0.0.1:3001/api/send-report');
-      final resp = await http.post(
-        localUrl,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'phone': phone,
-          'name': name,
-          'date': dateStr,
-        }),
-      ).timeout(const Duration(seconds: 90));
+      final resp = await http
+          .post(
+            localUrl,
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'phone': phone,
+              'name': name,
+              'date': dateStr,
+            }),
+          )
+          .timeout(const Duration(seconds: 90));
 
       if (resp.statusCode == 200) {
         final data = jsonDecode(resp.body) as Map<String, dynamic>;
         return {
           'success': true,
-          'message': data['message'] ?? 'Consolidated daily report (Text, PDF & Excel) dispatched successfully to $phone.',
+          'message': data['message'] ??
+              'Consolidated daily report (Text, PDF & Excel) dispatched successfully to $phone.',
           'destination': data['destination'] ?? phone,
           'messageIds': data['messageIds'],
         };
@@ -369,30 +398,37 @@ class WhatsAppNotificationService {
         final data = jsonDecode(resp.body) as Map<String, dynamic>;
         return {
           'success': false,
-          'error': data['error'] ?? 'Personal WhatsApp worker returned error ${resp.statusCode}',
+          'error': data['error'] ??
+              'Personal WhatsApp worker returned error ${resp.statusCode}',
         };
       }
     } catch (e) {
-      debugPrint('[WhatsAppService] Local worker daemon not reachable directly on port 3001: $e');
+      debugPrint(
+          '[WhatsAppService] Local worker daemon not reachable directly on port 3001: $e');
     }
 
     // 2. Queue in Supabase whatsapp_outbox
     if (!SupabaseConfig.isDemoMode && _supabase != null) {
       try {
-        final outboxRes = await _supabase!.from('whatsapp_outbox').insert({
-          'recipient_phone': phone,
-          'recipient_name': name,
-          'notification_type': 'attendance_report',
-          'payload': {
-            'report_date': dateStr,
-            'admin_name': name,
-          },
-          'status': 'pending',
-        }).select('id').maybeSingle();
+        final outboxRes = await _supabase!
+            .from('whatsapp_outbox')
+            .insert({
+              'recipient_phone': phone,
+              'recipient_name': name,
+              'notification_type': 'attendance_report',
+              'payload': {
+                'report_date': dateStr,
+                'admin_name': name,
+              },
+              'status': 'pending',
+            })
+            .select('id')
+            .maybeSingle();
 
         return {
           'success': true,
-          'message': 'Daily report queued in outbox for Admin ($phone). The personal WhatsApp worker will deliver it.',
+          'message':
+              'Daily report queued in outbox for Admin ($phone). The personal WhatsApp worker will deliver it.',
           'outboxId': outboxRes?['id'],
         };
       } catch (err) {
@@ -402,7 +438,8 @@ class WhatsAppNotificationService {
 
     return {
       'success': false,
-      'error': 'Personal WhatsApp daemon is not running on port 3001. Please run "npm start" in the whatsapp-service directory to keep the personal sender active.',
+      'error':
+          'Personal WhatsApp daemon is not running on port 3001. Please run "npm start" in the whatsapp-service directory to keep the personal sender active.',
     };
   }
 
@@ -419,11 +456,17 @@ class WhatsAppNotificationService {
     final totalEnrolled = students.length;
 
     // Fetch morning and afternoon sessions
-    final morningSession = demo.getSession(classModel.id, date, SessionType.morning);
-    final afternoonSession = demo.getSession(classModel.id, date, SessionType.afternoon);
+    final morningSession =
+        demo.getSession(classModel.id, date, SessionType.morning);
+    final afternoonSession =
+        demo.getSession(classModel.id, date, SessionType.afternoon);
 
-    final mRecords = morningSession != null ? demo.getSessionRecords(morningSession.id) : <AttendanceRecord>[];
-    final aRecords = afternoonSession != null ? demo.getSessionRecords(afternoonSession.id) : <AttendanceRecord>[];
+    final mRecords = morningSession != null
+        ? demo.getSessionRecords(morningSession.id)
+        : <AttendanceRecord>[];
+    final aRecords = afternoonSession != null
+        ? demo.getSessionRecords(afternoonSession.id)
+        : <AttendanceRecord>[];
 
     final mMap = {for (var r in mRecords) r.studentId: r.status};
     final aMap = {for (var r in aRecords) r.studentId: r.status};
@@ -473,10 +516,12 @@ class WhatsAppNotificationService {
       }
 
       // Session comparison
-      if (mStatus == AttendanceStatus.present && aStatus == AttendanceStatus.present) {
+      if (mStatus == AttendanceStatus.present &&
+          aStatus == AttendanceStatus.present) {
         presentBoth++;
       }
-      if (mStatus == AttendanceStatus.present && aStatus == AttendanceStatus.absent) {
+      if (mStatus == AttendanceStatus.present &&
+          aStatus == AttendanceStatus.absent) {
         presentMorningAbsentAfternoon++;
       }
     }
@@ -487,14 +532,16 @@ class WhatsAppNotificationService {
         ? ((morningPresent + morningOd) / morningRecorded) * 100.0
         : 0.0;
 
-    final afternoonRecorded = afternoonPresent + afternoonAbsent + afternoonOd + afternoonBunk;
+    final afternoonRecorded =
+        afternoonPresent + afternoonAbsent + afternoonOd + afternoonBunk;
     final afternoonPercentage = afternoonRecorded > 0
         ? ((afternoonPresent + afternoonOd) / afternoonRecorded) * 100.0
         : 0.0;
 
-    final reportType = (isPreliminary || afternoonSession == null || afternoonUnmarked > 0)
-        ? 'preliminary'
-        : 'final';
+    final reportType =
+        (isPreliminary || afternoonSession == null || afternoonUnmarked > 0)
+            ? 'preliminary'
+            : 'final';
 
     final report = AttendanceReportModel(
       id: _uuid.v4(),
@@ -533,7 +580,10 @@ class WhatsAppNotificationService {
     required List<AuthorizedRecipient> recipients,
   }) async {
     if (recipients.isEmpty) {
-      return {'success': false, 'error': 'No recipients selected for report delivery.'};
+      return {
+        'success': false,
+        'error': 'No recipients selected for report delivery.'
+      };
     }
 
     final messageText = report.formattedMessage;
@@ -552,7 +602,8 @@ class WhatsAppNotificationService {
           'recipients': recipients.map((r) => r.toJson()).toList(),
         };
 
-        final res = await _supabase!.functions.invoke('send-whatsapp-report', body: payload);
+        final res = await _supabase!.functions
+            .invoke('send-whatsapp-report', body: payload);
         if (res.data != null && res.data['success'] == true) {
           return res.data;
         } else {
@@ -571,7 +622,8 @@ class WhatsAppNotificationService {
     if (mockCredentialMissing) {
       return {
         'success': false,
-        'error': 'Missing WhatsApp API credentials. Reports remained queued in outbox.',
+        'error':
+            'Missing WhatsApp API credentials. Reports remained queued in outbox.',
       };
     }
 
@@ -582,7 +634,8 @@ class WhatsAppNotificationService {
       final phone = normalizePhoneNumber(rec.phoneNumber);
       final outboxId = _uuid.v4();
       final logId = _uuid.v4();
-      final idempotencyKey = 'rpt_${report.classId}_${report.reportDate}_${report.reportType}_${phone}_${DateTime.now().millisecondsSinceEpoch}';
+      final idempotencyKey =
+          'rpt_${report.classId}_${report.reportDate}_${report.reportType}_${phone}_${DateTime.now().millisecondsSinceEpoch}';
 
       if (mockFailMetaApi) {
         failedCount++;
@@ -615,7 +668,8 @@ class WhatsAppNotificationService {
       }
 
       deliveredCount++;
-      final fakeWamid = 'wamid.HBgM${DateTime.now().millisecondsSinceEpoch}${outboxId.substring(0, 6)}';
+      final fakeWamid =
+          'wamid.HBgM${DateTime.now().millisecondsSinceEpoch}${outboxId.substring(0, 6)}';
 
       final outboxItem = WhatsAppOutboxItem(
         id: outboxId,
@@ -702,10 +756,16 @@ class WhatsAppNotificationService {
         }).toList();
       }
       if (startDate != null) {
-        list = list.where((l) => l.createdAt.isAfter(startDate.subtract(const Duration(seconds: 1)))).toList();
+        list = list
+            .where((l) => l.createdAt
+                .isAfter(startDate.subtract(const Duration(seconds: 1))))
+            .toList();
       }
       if (endDate != null) {
-        list = list.where((l) => l.createdAt.isBefore(endDate.add(const Duration(days: 1)))).toList();
+        list = list
+            .where((l) =>
+                l.createdAt.isBefore(endDate.add(const Duration(days: 1))))
+            .toList();
       }
 
       list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
@@ -728,7 +788,9 @@ class WhatsAppNotificationService {
       }
 
       final res = await query.order('created_at', ascending: false).limit(100);
-      return (res as List).map((j) => WhatsAppNotificationLog.fromJson(j)).toList();
+      return (res as List)
+          .map((j) => WhatsAppNotificationLog.fromJson(j))
+          .toList();
     } catch (_) {
       return [];
     }
@@ -758,7 +820,8 @@ class WhatsAppNotificationService {
       final updated = old.copyWith(
         status: WhatsAppDeliveryStatus.sent,
         retryCount: old.retryCount + 1,
-        providerMessageId: 'wamid.HBgM${DateTime.now().millisecondsSinceEpoch}RETRY',
+        providerMessageId:
+            'wamid.HBgM${DateTime.now().millisecondsSinceEpoch}RETRY',
         errorMessage: null,
         sentAt: DateTime.now(),
       );
@@ -785,13 +848,15 @@ class WhatsAppNotificationService {
 
     try {
       final recipientName = advisorName ?? 'Class Advisor';
-      final recipientPhone = normalizePhoneNumber(advisorPhone ?? '+919876543211');
+      final recipientPhone =
+          normalizePhoneNumber(advisorPhone ?? '+919876543211');
       final idempotencyKey = 'imm_abs_${session.id}_${student.id}_absent';
 
       final alreadyQueued = await hasIdempotencyKey(idempotencyKey);
       if (alreadyQueued) return;
 
-      final periodName = session.sessionType == SessionType.morning ? 'Morning' : 'Afternoon';
+      final periodName =
+          session.sessionType == SessionType.morning ? 'Morning' : 'Afternoon';
       final templateParams = [
         recipientName,
         student.fullName,
@@ -884,8 +949,10 @@ class WhatsAppNotificationService {
 
       for (final rec in allRecords) {
         if (!sessionIds.contains(rec.sessionId)) continue;
-        if (rec.status == AttendanceStatus.absent || rec.status == AttendanceStatus.bunk) {
-          studentAbsenceCounts[rec.studentId] = (studentAbsenceCounts[rec.studentId] ?? 0) + 1;
+        if (rec.status == AttendanceStatus.absent ||
+            rec.status == AttendanceStatus.bunk) {
+          studentAbsenceCounts[rec.studentId] =
+              (studentAbsenceCounts[rec.studentId] ?? 0) + 1;
         }
       }
 
@@ -894,7 +961,12 @@ class WhatsAppNotificationService {
         if (entry.value >= threshold) {
           final studentObj = allStudents.firstWhere(
             (s) => s.id == entry.key,
-            orElse: () => Student(id: entry.key, registerNumber: 'N/A', fullName: 'Student', active: true, createdAt: DateTime.now()),
+            orElse: () => Student(
+                id: entry.key,
+                registerNumber: 'N/A',
+                fullName: 'Student',
+                active: true,
+                createdAt: DateTime.now()),
           );
           if (studentObj.active) {
             qualifyingStudents.add({
@@ -908,16 +980,20 @@ class WhatsAppNotificationService {
       }
 
       if (qualifyingStudents.isNotEmpty) {
-        final startStr = "${startDate.year}-${startDate.month.toString().padLeft(2, '0')}-${startDate.day.toString().padLeft(2, '0')}";
-        final endStr = "${targetDate.year}-${targetDate.month.toString().padLeft(2, '0')}-${targetDate.day.toString().padLeft(2, '0')}";
-        final idempotencyKey = 'rep_abs_${cls.id}_${startStr}_${endStr}_th$threshold';
+        final startStr =
+            "${startDate.year}-${startDate.month.toString().padLeft(2, '0')}-${startDate.day.toString().padLeft(2, '0')}";
+        final endStr =
+            "${targetDate.year}-${targetDate.month.toString().padLeft(2, '0')}-${targetDate.day.toString().padLeft(2, '0')}";
+        final idempotencyKey =
+            'rep_abs_${cls.id}_${startStr}_${endStr}_th$threshold';
 
         bool deanNotified = false;
 
         if (_settings.summaryAlertsEnabled) {
           final alreadyQueued = await hasIdempotencyKey(idempotencyKey);
           if (!alreadyQueued) {
-            final deanPhone = normalizePhoneNumber(_settings.deanPlacementPhone);
+            final deanPhone =
+                normalizePhoneNumber(_settings.deanPlacementPhone);
             final deanName = _settings.deanPlacementName;
 
             final templateParams = [
@@ -996,13 +1072,15 @@ class WhatsAppNotificationService {
           await _supabase!.functions.invoke('whatsapp-worker');
         }
       } catch (e) {
-        debugPrint('[WhatsAppService] Error triggering server-side whatsapp-worker: $e');
+        debugPrint(
+            '[WhatsAppService] Error triggering server-side whatsapp-worker: $e');
       }
       return;
     }
 
     if (mockCredentialMissing) {
-      debugPrint('[WhatsAppWorker] Error: Missing WhatsApp credentials. Messages remain queued.');
+      debugPrint(
+          '[WhatsAppWorker] Error: Missing WhatsApp credentials. Messages remain queued.');
       return;
     }
 
@@ -1012,10 +1090,12 @@ class WhatsAppNotificationService {
     for (final item in pending) {
       try {
         if (mockFailMetaApi) {
-          throw Exception("Meta WhatsApp Cloud API HTTP 503: Service temporarily unavailable");
+          throw Exception(
+              "Meta WhatsApp Cloud API HTTP 503: Service temporarily unavailable");
         }
 
-        final fakeWamid = 'wamid.HBgM${DateTime.now().millisecondsSinceEpoch}${item.id.substring(0, 8)}';
+        final fakeWamid =
+            'wamid.HBgM${DateTime.now().millisecondsSinceEpoch}${item.id.substring(0, 8)}';
 
         await updateOutboxStatus(
           id: item.id,
@@ -1028,7 +1108,9 @@ class WhatsAppNotificationService {
         final newRetry = item.retryCount + 1;
         final backoffSeconds = (1 << newRetry) * 2;
         final nextRetry = DateTime.now().add(Duration(seconds: backoffSeconds));
-        final finalStatus = newRetry >= item.maxRetries ? WhatsAppDeliveryStatus.failed : WhatsAppDeliveryStatus.queued;
+        final finalStatus = newRetry >= item.maxRetries
+            ? WhatsAppDeliveryStatus.failed
+            : WhatsAppDeliveryStatus.queued;
 
         await updateOutboxStatus(
           id: item.id,
@@ -1068,7 +1150,8 @@ class WhatsAppNotificationService {
   }) async {
     final eventKey = '${providerMessageId}_${newStatus.name}_$timestamp';
     if (_processedWebhookEvents.contains(eventKey)) {
-      debugPrint('[WhatsAppWebhook] Skipped duplicate webhook event: $eventKey');
+      debugPrint(
+          '[WhatsAppWebhook] Skipped duplicate webhook event: $eventKey');
       return false;
     }
     _processedWebhookEvents.add(eventKey);
@@ -1101,7 +1184,8 @@ class WhatsAppNotificationService {
     }
   }
 
-  Future<void> saveToOutboxAndLogs(WhatsAppOutboxItem outboxItem, WhatsAppNotificationLog logItem) async {
+  Future<void> saveToOutboxAndLogs(
+      WhatsAppOutboxItem outboxItem, WhatsAppNotificationLog logItem) async {
     if (SupabaseConfig.isDemoMode) {
       _demoOutbox.add(outboxItem);
       _demoLogs.add(logItem);
@@ -1143,10 +1227,13 @@ class WhatsAppNotificationService {
   Future<List<WhatsAppOutboxItem>> getPendingOutboxItems() async {
     if (SupabaseConfig.isDemoMode) {
       final now = DateTime.now();
-      return _demoOutbox.where((i) =>
-        i.status == WhatsAppDeliveryStatus.queued ||
-        (i.status == WhatsAppDeliveryStatus.failed && i.retryCount < i.maxRetries && i.nextRetryAt.isBefore(now))
-      ).toList();
+      return _demoOutbox
+          .where((i) =>
+              i.status == WhatsAppDeliveryStatus.queued ||
+              (i.status == WhatsAppDeliveryStatus.failed &&
+                  i.retryCount < i.maxRetries &&
+                  i.nextRetryAt.isBefore(now)))
+          .toList();
     }
 
     try {
@@ -1202,10 +1289,12 @@ class WhatsAppNotificationService {
         'status': status.name,
         'updated_at': DateTime.now().toIso8601String(),
       };
-      if (providerMessageId != null) updateData['provider_message_id'] = providerMessageId;
+      if (providerMessageId != null)
+        updateData['provider_message_id'] = providerMessageId;
       if (errorMessage != null) updateData['error_message'] = errorMessage;
       if (retryCount != null) updateData['retry_count'] = retryCount;
-      if (nextRetryAt != null) updateData['next_retry_at'] = nextRetryAt.toIso8601String();
+      if (nextRetryAt != null)
+        updateData['next_retry_at'] = nextRetryAt.toIso8601String();
 
       await _supabase!.from('whatsapp_outbox').update(updateData).eq('id', id);
 
@@ -1228,7 +1317,8 @@ class WhatsAppNotificationService {
     String? errorMessage,
   }) async {
     if (SupabaseConfig.isDemoMode) {
-      final outboxIdx = _demoOutbox.indexWhere((i) => i.providerMessageId == wamid);
+      final outboxIdx =
+          _demoOutbox.indexWhere((i) => i.providerMessageId == wamid);
       if (outboxIdx != -1) {
         _demoOutbox[outboxIdx] = _demoOutbox[outboxIdx].copyWith(
           status: status,
@@ -1242,7 +1332,9 @@ class WhatsAppNotificationService {
           status: status,
           errorCode: errorCode,
           errorMessage: errorMessage,
-          deliveredAt: status == WhatsAppDeliveryStatus.delivered ? DateTime.now() : null,
+          deliveredAt: status == WhatsAppDeliveryStatus.delivered
+              ? DateTime.now()
+              : null,
           readAt: status == WhatsAppDeliveryStatus.read ? DateTime.now() : null,
         );
       }
@@ -1250,16 +1342,19 @@ class WhatsAppNotificationService {
     }
 
     try {
-      await _supabase!
-          .from('whatsapp_outbox')
-          .update({'status': status.name, 'error_message': errorMessage, 'updated_at': DateTime.now().toIso8601String()})
-          .eq('provider_message_id', wamid);
+      await _supabase!.from('whatsapp_outbox').update({
+        'status': status.name,
+        'error_message': errorMessage,
+        'updated_at': DateTime.now().toIso8601String()
+      }).eq('provider_message_id', wamid);
 
       final logData = <String, dynamic>{'status': status.name};
       if (errorCode != null) logData['error_code'] = errorCode;
       if (errorMessage != null) logData['error_message'] = errorMessage;
-      if (status == WhatsAppDeliveryStatus.delivered) logData['delivered_at'] = DateTime.now().toIso8601String();
-      if (status == WhatsAppDeliveryStatus.read) logData['read_at'] = DateTime.now().toIso8601String();
+      if (status == WhatsAppDeliveryStatus.delivered)
+        logData['delivered_at'] = DateTime.now().toIso8601String();
+      if (status == WhatsAppDeliveryStatus.read)
+        logData['read_at'] = DateTime.now().toIso8601String();
 
       await _supabase!
           .from('whatsapp_notification_logs')
@@ -1294,5 +1389,6 @@ class WhatsAppNotificationService {
 
   List<WhatsAppOutboxItem> get demoOutbox => List.unmodifiable(_demoOutbox);
   List<WhatsAppNotificationLog> get demoLogs => List.unmodifiable(_demoLogs);
-  List<AuthorizedRecipient> get demoAuthorizedRecipients => List.unmodifiable(_demoAuthorizedRecipients);
+  List<AuthorizedRecipient> get demoAuthorizedRecipients =>
+      List.unmodifiable(_demoAuthorizedRecipients);
 }

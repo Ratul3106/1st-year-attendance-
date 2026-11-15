@@ -5,6 +5,7 @@ import 'package:student_attendance_system/models/student.dart';
 import 'package:student_attendance_system/models/attendance_session.dart';
 import 'package:student_attendance_system/models/attendance_record.dart';
 import 'package:student_attendance_system/core/config/supabase_config.dart';
+import 'package:student_attendance_system/core/utils/attendance_window_helper.dart';
 import 'package:student_attendance_system/services/demo_data_service.dart';
 import 'package:student_attendance_system/services/whatsapp_notification_service.dart';
 
@@ -155,19 +156,17 @@ class AttendanceService {
     return {'morning': morning, 'afternoon': afternoon};
   }
 
-  // Get or Create Attendance Session (morning/afternoon) for a class and date
-  Future<AttendanceSession> getOrCreateSession({
+  // Fetch existing Attendance Session (read-only; returns null if not yet created)
+  Future<AttendanceSession?> getExistingSession({
     required String classId,
     required String date,
     required SessionType sessionType,
   }) async {
     if (SupabaseConfig.isDemoMode) {
-      return DemoDataService.instance.getOrCreateSession(classId, date, sessionType);
+      return DemoDataService.instance.getSession(classId, date, sessionType);
     }
 
-    final userId = _supabase!.auth.currentUser!.id;
     final typeStr = sessionType == SessionType.morning ? 'morning' : 'afternoon';
-
     final existing = await _supabase!
         .from('attendance_sessions')
         .select()
@@ -176,9 +175,35 @@ class AttendanceService {
         .eq('session_type', typeStr)
         .maybeSingle();
 
-    if (existing != null) {
-      return AttendanceSession.fromJson(existing);
+    if (existing == null) return null;
+    return AttendanceSession.fromJson(existing);
+  }
+
+  // Get or Create Attendance Session (morning/afternoon) for a class and date
+  Future<AttendanceSession> getOrCreateSession({
+    required String classId,
+    required String date,
+    required SessionType sessionType,
+  }) async {
+    final existingSession = await getExistingSession(
+      classId: classId,
+      date: date,
+      sessionType: sessionType,
+    );
+    if (existingSession != null) {
+      return existingSession;
     }
+
+    if (!AttendanceWindowHelper.isSessionOpen(sessionType)) {
+      throw Exception(AttendanceWindowHelper.closedReason(sessionType));
+    }
+
+    if (SupabaseConfig.isDemoMode) {
+      return DemoDataService.instance.getOrCreateSession(classId, date, sessionType);
+    }
+
+    final userId = _supabase!.auth.currentUser!.id;
+    final typeStr = sessionType == SessionType.morning ? 'morning' : 'afternoon';
 
     // Create new open session
     final inserted = await _supabase!
@@ -218,8 +243,28 @@ class AttendanceService {
     required Map<String, AttendanceStatus> studentStatusMap,
   }) async {
     if (SupabaseConfig.isDemoMode) {
+      final demoSess = DemoDataService.instance.getSessionById(sessionId);
+      if (demoSess != null && !AttendanceWindowHelper.isSessionOpen(demoSess.sessionType)) {
+        throw Exception(AttendanceWindowHelper.closedReason(demoSess.sessionType));
+      }
       DemoDataService.instance.saveAttendanceRecords(sessionId, studentStatusMap);
       return;
+    }
+
+    // Verify session type, date, and active time window before writing
+    final sessionRes = await _supabase!
+        .from('attendance_sessions')
+        .select('class_id, attendance_date, session_type, status')
+        .eq('id', sessionId)
+        .single();
+
+    final sessionType = (sessionRes['session_type'] as String? ?? 'morning') == 'morning'
+        ? SessionType.morning
+        : SessionType.afternoon;
+
+    if (sessionRes['attendance_date'] != AttendanceWindowHelper.todayIstString() ||
+        !AttendanceWindowHelper.isSessionOpen(sessionType)) {
+      throw Exception(AttendanceWindowHelper.closedReason(sessionType));
     }
 
     final userId = _supabase!.auth.currentUser!.id;
@@ -239,12 +284,6 @@ class AttendanceService {
         .upsert(recordsToUpsert, onConflict: 'session_id, student_id');
 
     // Automatically trigger daily report recalculation for this class/date
-    final sessionRes = await _supabase!
-        .from('attendance_sessions')
-        .select('class_id, attendance_date')
-        .eq('id', sessionId)
-        .single();
-
     await _supabase!.rpc('generate_daily_attendance_report', params: {
       'p_class_id': sessionRes['class_id'],
       'p_date': sessionRes['attendance_date'],
