@@ -13,6 +13,8 @@ void main() {
       className: 'III CSE - A',
       department: 'CSE',
       academicYear: '2024-2025',
+      active: true,
+      createdAt: DateTime(2024, 1, 1),
     );
 
     final config = AttendanceReportConfig(

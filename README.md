@@ -1,342 +1,243 @@
-# College Attendance Monitoring System with Automated WhatsApp Notifications
+# Student Attendance Management & Analytics System
 
-A modern, production-grade Attendance Monitoring System for engineering and arts colleges. It integrates Flutter (responsive Web/Mobile), Supabase (PostgreSQL with Row Level Security, Triggers & Edge Functions), and the official **Meta WhatsApp Business Platform Cloud API** for real-time absence alerts and repeated-absence intervention summaries.
+A production-grade, enterprise Flutter application and backend infrastructure for college attendance management, real-time analytics intelligence, automated Meta WhatsApp Business notifications, and multi-format reporting.
+
+Built with **Flutter** (Web, Mobile, Desktop), **Supabase** (PostgreSQL with Row Level Security, Triggers & Edge Functions), **Firebase Analytics**, and the official **Meta WhatsApp Cloud API**.
 
 ---
 
-## 1. Architecture Overview
+## 1. System Architecture Overview
 
 ```
-┌────────────────────────────────────────────────────────┐
-│               Flutter Frontend Application             │
-│   • Morning & Afternoon Attendance Marking             │
-│   • Admin Control Panel: Analytics & WhatsApp Config   │
-│   • Delivery Status History & Outbox Flush Trigger     │
-└───────────────────────────┬────────────────────────────┘
-                            │
-               Supabase / PostgreSQL Database
-┌───────────────────────────▼────────────────────────────┐
-│                    Database Engine                     │
-│   • attendance_records (Present, Absent, OD, Bunk)     │
-│   • Database Trigger: trg_attendance_record_whatsapp   │
-│   • Stored Procedures:                                 │
-│       - queue_immediate_absence_notification           │
-│       - evaluate_repeated_absence_summaries            │
-│   • Transactional Outbox: whatsapp_outbox              │
-│   • Delivery Audit Logs: whatsapp_notification_logs    │
-│   • Webhook Event Dedup: whatsapp_webhook_events       │
-│   • Summary Audit: whatsapp_absence_summaries          │
-└─────────────┬───────────────────────────▲──────────────┘
-              │                           │
-  Queue Items │              Webhook HTTP │ HMAC-SHA256
-              ▼                           │ Verification
-┌──────────────────────────┐    ┌─────────┴──────────────┐
-│  WhatsApp Outbox Worker  │    │ Meta Webhook Endpoint  │
-│  (Supabase Edge Function │    │ (whatsapp-webhook)     │
-│   / Python Worker)       │    │ • Verifies challenge   │
-│  • Normalizes E.164      │    │ • Deduplicates events  │
-│  • Exponential Retries   │    │ • Updates sent/        │
-│  • Dispatches Template   │    │   delivered/read/fail  │
-└─────────────┬────────────┘    └────────────────────────┘
+┌────────────────────────────────────────────────────────────────────────┐
+│                      Flutter Multi-Platform Client                     │
+│   • Admin Portal: Management, Analytics Intelligence & Export Engine   │
+│   • Faculty / Coordinator Portal: Morning & Afternoon Marking Windows  │
+│   • Student Portal: Personal Attendance Dossier & Monthly Trends       │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │
+                       Supabase / PostgreSQL Database
+┌───────────────────────────────────▼────────────────────────────────────┐
+│                             Database Engine                            │
+│   • Attendance Sessions & Records (Present, Absent, OD, Bunk)          │
+│   • Multi-Tenant Row Level Security (RLS) & Role-Based Auth (RBAC)     │
+│   • Transactional Queues: whatsapp_outbox & delivery audit logs        │
+│   • Stored Procedures: immediate absence alerts & repeated summaries   │
+└─────────────┬──────────────────────────────────────────▲───────────────┘
+              │                                          │
+  Event Queue │                       Webhook & Outbox   │ HMAC-SHA256
+              ▼                                          │ Verification
+┌───────────────────────────────┐        ┌───────────────┴───────────────┐
+│     WhatsApp Outbox Worker    │        │     Meta Webhook Handler      │
+│  (Supabase Edge / Node.js)    │        │  (whatsapp-webhook function)  │
+│  • E.164 phone normalization  │        │  • Delivery status ingestion  │
+│  • Exponential backoff retry  │        │  • Event deduplication        │
+└─────────────┬─────────────────┘        └───────────────────────────────┘
               │
-              │ Official Cloud API HTTPS (v21.0)
+              │ HTTPS Graph API (v21.0)
               ▼
-┌────────────────────────────────────────────────────────┐
-│        Meta WhatsApp Business Platform Cloud API       │
-│                                                        │
-│   To: Class Advisor (+91...) [Immediate Absence Alert] │
-│   To: Dean of Placement     [Repeated Absence Summary] │
-└────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────────────┐
+│              Meta WhatsApp Business Platform Cloud API                 │
+│   • Immediate Absence Alerts to Class Advisors                         │
+│   • Periodical Repeated-Absence Summaries to Dean & Leadership         │
+│   • Scheduled 2:00 PM IST Daily Class Attendance Reports               │
+└────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 2. Notification Triggers
+## 2. Main Capabilities & User Roles
 
-### A. Immediate Absence Notification
-- **Trigger**: When an authorized faculty member / coordinator marks a student with status **ABSENT**.
-- **Recipient**: The assigned **Class Advisor** for that class (resolved dynamically from `class_coordinators`), plus any additional college-configured staff.
-- **Deduplication**: Guaranteed by deterministic idempotency keys (`imm_abs_{session_id}_{student_id}_absent`). Re-saving an unchanged absence or refreshing the screen **never** generates duplicate messages.
-- **Leave Exclusion**: Approved leave (`od` - On Duty) and `present` records do **not** trigger alerts. Correcting an absence to Present or OD updates the system and prevents future alerts.
-- **Fail-Safe**: Attendance records are saved in the primary transaction regardless of Meta API availability. Notifications are queued in `whatsapp_outbox` for background dispatch.
+### User Roles & Access Control
+- **Administrator**:
+  - Full management of academic years, departments, classes, sections, student enrollments, and coordinator assignments.
+  - Institutional control of WhatsApp API credentials, dispatch schedules, and authorized notification recipients.
+  - Direct access to the **Advanced Attendance Analytics & Reports** dashboard.
+- **Faculty / Class Coordinator**:
+  - Controlled marking of student attendance within designated college operating windows.
+  - Real-time roster overview with status toggles (`Present`, `Absent`, `On Duty`, `Bunk`).
+  - Session closing and instant report verification.
+- **Student**:
+  - Self-service portal displaying subject-wise and term-wise attendance percentage, monthly presence charts, and absence history.
 
-### B. Repeated-Absence Summary
-- **Trigger**: Automated scheduled job running over a configurable reporting window (development default: **7 days**, threshold: **3 absences**).
-- **Recipients**: **Dean of Placement & Training**, relevant Class Advisors, and authorized leadership.
-- **Business Logic**:
-  - Scans distinct class sessions across the window.
-  - Strictly **excludes** approved leave (`od`) and corrected attendance.
-  - Groups qualifying students by class and department.
-  - Generates neutral intervention language (*"Attendance Alert"*).
-  - Enforces period idempotency (`rep_abs_{class_id}_{start_date}_{end_date}_th{threshold}`) to prevent duplicate summaries across worker restarts.
-
----
-
-## 3. Approved Meta WhatsApp Message Templates
-
-Create these message templates in the **Meta Business Manager -> WhatsApp Manager -> Message Templates**:
-
-### Template 1: Immediate Absence Alert
-- **Name**: `attendance_absence_alert`
-- **Category**: `UTILITY`
-- **Language**: `English (US)` (`en_US`)
-- **Body Content**:
-```
-Attendance Alert
-
-Dear {{1}},
-
-An attendance record requires your review.
-
-Student: {{2}}
-Roll Number: {{3}}
-Class: {{4}}
-Date: {{5}}
-Period: {{6}}
-Subject: {{7}}
-Status: Absent
-
-Please review this record according to college attendance procedures.
-```
-- **Placeholders**:
-  - `{{1}}`: Recipient / Advisor Name
-  - `{{2}}`: Student Full Name
-  - `{{3}}`: Register / Roll Number
-  - `{{4}}`: Class / Section
-  - `{{5}}`: Attendance Date (YYYY-MM-DD)
-  - `{{6}}`: Session (Morning / Afternoon)
-  - `{{7}}`: Subject / Session Context
-
-### Template 2: Repeated-Absence Summary
-- **Name**: `attendance_repeat_summary`
-- **Category**: `UTILITY`
-- **Language**: `English (US)` (`en_US`)
-- **Body Content**:
-```
-Attendance Alert: Repeated Absences Summary
-
-Dear {{1}},
-
-The attendance evaluation for {{2}} has identified {{3}} student(s) meeting the repeated-absence intervention threshold for the period {{4}} to {{5}}.
-
-Please review the detailed records in the College Attendance Portal.
-```
-- **Placeholders**:
-  - `{{1}}`: Dean / Recipient Name
-  - `{{2}}`: Class Name & Department
-  - `{{3}}`: Number of Qualifying Students
-  - `{{4}}`: Period Start Date
-  - `{{5}}`: Period End Date
-
-### Template 3: Automated & Manual Daily Attendance Report
-- **Name**: `attendance_daily_report`
-- **Category**: `UTILITY`
-- **Language**: `English (US)` (`en_US`)
-- **Body Content**:
-```
-STUDENT ATTENDANCE REPORT
-
-Date: {{1}}
-Department: {{2}}
-Class: {{3}}
-Academic Year: {{4}}
-
-MORNING ATTENDANCE
-Total Students: {{5}}
-Present: {{6}}
-Absent: {{7}}
-OD: {{8}}
-Not Marked: {{9}}
-Attendance: {{10}}
-
-AFTERNOON ATTENDANCE
-Total Students: {{11}}
-Present: {{12}}
-Absent: {{13}}
-OD: {{14}}
-Bunk: {{15}}
-Not Marked: {{16}}
-Attendance: {{17}}
-
-SESSION COMPARISON
-Present in Both Sessions: {{18}}
-Morning Present → Afternoon Absent: {{19}}
-Afternoon Bunk: {{20}}
-
-Report Status: {{21}}
-
-Generated At: {{22}}
-
-Student Attendance Management System
-```
+### College Attendance Marking Windows (IST)
+To enforce institutional discipline and prevent back-dated manipulation:
+- **Morning Attendance Window**: `08:15 AM – 08:45 AM IST`
+- **Afternoon Attendance Window**: `12:20 PM – 12:50 PM IST`
+- Outside of authorized windows, coordinator marking is strictly locked unless administrative override privileges are exercised.
 
 ---
 
-## 4. Setup & Environment Configuration
+## 3. Advanced Attendance Analytics & Reports Module
 
-### 1. Copy Environment Variables
-Create a local `.env` file based on `.env.example`:
+The system incorporates an institutional analytics engine that provides deep visibility into student absenteeism, bunk trends, department comparisons, and attendance risk distributions:
+
+### Interactive Analytics Filters
+- **Academic Year** (Multi-year historical lookup).
+- **Department** (Cascades dynamically to available classes).
+- **Class / Section**.
+- **Reporting Month & Year** (January through December).
+- **Session Filter** (`Morning`, `Afternoon`, `Both`).
+- **Attendance Status** (`Present`, `Absent`, `OD`, `Bunk`).
+- **Custom Date Range** picker.
+- 1-click **Reset Filters** and **Refresh Analytics** with instant in-memory cache bypass.
+
+### Six Analytical Intelligence Views
+1. **Month-Wise Bunk Leaderboard**:
+   - Ranks students descending by total bunk occurrences.
+   - 12-month calendar breakdown with Month-over-Month ($\Delta$) trend detection.
+   - Monthly bunk volume distribution bar chart.
+2. **All Students Performance Table**:
+   - Paginated roster with real-time text search and multi-column sorting.
+   - Displays Conducted Sessions, $P, A, OD, B, U$, Attendance %, and Risk Tier.
+3. **Individual Student Analytics Dossier**:
+   - Deep-dive modal displaying overall %, standard vs. strict attendance, shift consistency, 12-month visual timeline, and highest/lowest attendance months.
+4. **Department & Class Comparative Analysis**:
+   - Benchmarks attendance performance across engineering departments and class sections.
+   - Identifies counts and percentages of at-risk students ($< 75\%$ and $< 65\%$).
+5. **Morning versus Afternoon Shift Discrepancy**:
+   - Detects post-lunch attendance drop-offs on days where both shifts were conducted.
+   - Quantifies students present morning but absent afternoon ($P_{morn} \rightarrow A_{aft}$).
+6. **Calendar Attendance Heatmap**:
+   - GitHub-style color intensity activity grid charting daily presence rates.
+
+---
+
+## 4. Attendance Calculation Integrity Rules
+
+Institutional audits require strict adherence to calculation standards:
+
+1. **Conducted Closed Sessions Denominator**:
+   - Total scheduled sessions ($N$) is computed strictly from finalized, closed attendance sessions (`status = 'closed'`).
+   - Open, active, or unconducted sessions are excluded from denominators.
+   - Denominators are derived independently of student record row counts.
+2. **Explicit Unmarked Handling**:
+   - If an enrolled student has no attendance record in a closed session, the system explicitly records it as **Unmarked** ($U$).
+   - Unmarked sessions are penalized in the denominator: $N = P + A + OD + B + U$.
+   - Unmarked sessions are never assumed to be Present or Bunk.
+3. **Formulas**:
+   - **Standard Institutional Percentage** (includes approved On Duty):
+     $$\text{Attendance } \% = \frac{\text{Present} + \text{OD}}{N} \times 100$$
+   - **Strict Physical Presence Percentage**:
+     $$\text{Strict Attendance } \% = \frac{\text{Present}}{N} \times 100$$
+   - If $N = 0$, attendance safely returns $0.0\%$ (zero division guard).
+4. **Historical Class Attribution**:
+   - Preserves historical student-to-class enrollments. Graduated students and class transfers retain correct attribution to historical classes without duplicate aggregation.
+
+---
+
+## 5. Multi-Format Data Export Subsystem
+
+Export institutional reports matching active dashboard filters via the **Export Analytics & Reports** modal:
+
+- **Multi-Sheet Excel Workbook (`.xlsx`)**:
+  - *Sheet 1*: Executive Overview (KPIs, active filters, risk breakdown table).
+  - *Sheet 2*: Student Performance Roster (all students, metrics, and risk tier).
+  - *Sheet 3*: Monthly Bunk Leaderboard (Jan–Dec bunk counts and MoM delta).
+  - *Sheet 4*: Morning vs. Afternoon Analysis (shift attendance and drop-off counts).
+  - *Sheet 5*: Department & Class Comparison (enrolled counts, average %, bunk totals).
+- **Institutional PDF Report (`.pdf`)**:
+  - Official university header, metadata, filter criteria, summary cards, data tables, formula reference, and formal administrative sign-off blocks.
+- **Standardized CSV Exports (`.csv`)**:
+  - 4 clean RFC 4180 CSV exports with UTF-8 BOM encoding for seamless spreadsheet opening.
+
+---
+
+## 6. Technology Stack
+
+- **Frontend Application**:
+  - **Flutter SDK**: `3.47.x` – `3.50.0`
+  - **Dart**: `3.13.x`
+  - **UI Libraries**: Google Fonts, Flutter Riverpod, Fl Chart
+  - **Reporting Libraries**: `pdf` (3.12.0), `excel` (4.0.6), `csv` (6.0.0), `printing`
+- **Backend & Cloud Infrastructure**:
+  - **Supabase**: PostgreSQL 15+ with Row Level Security (RLS)
+  - **Supabase Edge Functions**: Deno / TypeScript serverless runtime
+  - **Firebase**: Firebase Core & Analytics
+- **Messaging Integration**:
+  - **Meta WhatsApp Business Platform Cloud API**: Graph API `v21.0`
+  - **Transactional Outbox Worker**: Node.js worker with exponential backoff retries
+
+---
+
+## 7. Setup & Installation Guide
+
+### Prerequisites
+- Flutter SDK (`3.47.x` or higher)
+- JDK 17 (Eclipse Adoptium Temurin 17 recommended)
+- Android SDK Platform API 34
+- Supabase CLI
+
+### 1. Clone the Repository
+```bash
+git clone https://github.com/Ratul3106/1st-year-attendance-.git
+cd 1st-year-attendance-
+```
+
+### 2. Configure Environment Variables
+Copy the template configuration file:
 ```bash
 cp .env.example .env
 ```
+Populate your Supabase URL, publishable anonymous key, and WhatsApp credentials in `.env`.
 
-### 2. Configure Meta WhatsApp Cloud API Credentials
-Obtain credentials from your [Meta for Developers](https://developers.facebook.com/) App dashboard:
-```env
-WHATSAPP_ACCESS_TOKEN=EAA...your_system_user_permanent_token
-WHATSAPP_PHONE_NUMBER_ID=100000000000000
-WHATSAPP_BUSINESS_ACCOUNT_ID=200000000000000
-WHATSAPP_API_VERSION=v21.0
-WHATSAPP_TEMPLATE_NAME=attendance_absence_alert
-WHATSAPP_TEMPLATE_LANGUAGE=en_US
-WHATSAPP_SUMMARY_TEMPLATE_NAME=attendance_repeat_summary
-WHATSAPP_SUMMARY_TEMPLATE_LANGUAGE=en_US
-WHATSAPP_WEBHOOK_VERIFY_TOKEN=your_secure_random_verify_token
-WHATSAPP_APP_SECRET=your_app_secret_hex
-```
-
----
-
-## 5. Database Migration Commands
-
-Apply migrations using the Supabase CLI or SQL Editor:
-
+### 3. Install Flutter Dependencies
 ```bash
-# Apply initial schema & enhancements
-supabase db push
-
-# Or apply specific migration directly:
-supabase migration up
+flutter pub get
 ```
-Migration file:
-`supabase/migrations/20261013010000_whatsapp_notifications.sql`
 
-This provisions:
-- `whatsapp_settings` (thresholds, window, template names, Dean recipient info)
-- `whatsapp_outbox` (transactional queue with idempotency keys)
-- `whatsapp_notification_logs` (audit history, provider `wamid` IDs, sent/delivered/read timestamps)
-- `whatsapp_webhook_events` (deduplication table)
-- `whatsapp_absence_summaries` (summary runs and qualifying student records)
-- Stored procedures: `queue_immediate_absence_notification`, `evaluate_repeated_absence_summaries`
-
----
-
-## 6. Running the Edge Functions & Background Worker
-
-### Deploy Supabase Edge Functions:
+### 4. Run Automated Test Suites
+Run the full test suite or the dedicated analytics test suites:
 ```bash
-# 1. Webhook endpoint
-supabase functions deploy whatsapp-webhook --no-verify-jwt
-
-# 2. Outbox background worker
-supabase functions deploy whatsapp-worker
-
-# 3. Scheduled repeated-absence job
-supabase functions deploy repeated-absence-job
-
-# 4. Daily attendance report job (2:00 PM IST preliminary & final triggers)
-supabase functions deploy daily-attendance-report-job
-
-# 5. Secure report sending & test connection endpoint
-supabase functions deploy send-whatsapp-report
+# Run all 5 analytics test suites + report generator test:
+flutter test test/advanced_analytics_engine_test.dart test/advanced_analytics_service_test.dart test/advanced_analytics_dashboard_test.dart test/advanced_analytics_phase4_test.dart test/advanced_analytics_export_test.dart test/report_generator_test.dart
 ```
 
-### Configure Meta Webhook URL:
-1. In Meta WhatsApp Developer Portal -> WhatsApp -> Configuration:
-2. **Callback URL**: `https://<YOUR-PROJECT-ID>.supabase.co/functions/v1/whatsapp-webhook`
-3. **Verify Token**: Matching `WHATSAPP_WEBHOOK_VERIFY_TOKEN`
-4. Subscribe to the webhook field: **`messages`** (receives delivery status updates: `sent`, `delivered`, `read`, `failed`).
-
-### Automate Scheduled Summary & Daily Reports (pg_cron):
-```sql
--- 1. Schedule daily 2:00 PM IST (14:00 IST = 08:30 UTC) Attendance Report Trigger
-SELECT cron.schedule(
-    'daily_2pm_ist_attendance_report',
-    '30 8 * * *',
-    $$SELECT net.http_post(
-        url := 'https://<YOUR-PROJECT-ID>.supabase.co/functions/v1/daily-attendance-report-job',
-        headers := '{"Content-Type": "application/json", "Authorization": "Bearer <SERVICE_ROLE_KEY>"}'::jsonb,
-        body := '{"report_type": "preliminary"}'::jsonb
-    );$$
-);
-
--- 2. Schedule daily repeated-absence evaluation at 18:00 IST (12:30 UTC)
-SELECT cron.schedule(
-    'daily_repeated_absence_evaluation',
-    '30 12 * * *',
-    $$SELECT evaluate_repeated_absence_summaries(7, 3, CURRENT_DATE);$$
-);
-```
-
----
-
-## 7. Companion FastAPI Backend (Alternative / Dedicated Server)
-
-If running as a standalone Python FastAPI service:
+### 5. Launch the Application
 ```bash
-cd backend
-python -m venv venv
-venv\Scripts\activate  # On Windows
-pip install -r requirements.txt
-uvicorn backend.app.main:app --reload --port 8000
+# Run on Chrome / Web:
+flutter run -d chrome
+
+# Run on Android (ensure JDK 17 is active):
+flutter run -d android
 ```
-Endpoints exposed:
-- `GET /webhook` - Meta Challenge verification
-- `POST /webhook` - Meta status update handler with HMAC-SHA256 signature verification
-- `POST /api/attendance/event` - Attendance event ingestion
-- `POST /api/attendance/summary/evaluate` - Repeated absence evaluation
-- `POST /api/outbox/process` - Outbox queue processor
-- `GET /api/notifications/history` - Delivery history for administrators
 
 ---
 
-## 8. Running Automated Tests
+## 8. Project Directory Structure
 
-Run the Flutter automated test suite:
-```bash
-flutter test
+```text
+├── android/                        # Android Gradle and Native Configuration
+│   ├── app/build.gradle            # App-level build configuration (SDK 34, Java 17)
+│   ├── gradle/wrapper/             # Gradle Wrapper (8.14.3)
+│   ├── build.gradle                # Root project build configuration
+│   └── settings.gradle             # AGP (8.11.1), Kotlin (2.2.20), Firebase plugins
+├── docs/                           # System Technical Specifications
+│   ├── ADVANCED_ANALYTICS.md       # Analytics Views, Formulas, and Caching Specification
+│   └── ANDROID_BUILD.md            # Android Toolchain, JDK 17, and Build Instructions
+├── lib/
+│   ├── core/                       # App themes, constants, Supabase config, utilities
+│   ├── models/                     # Data models (Student, Class, Record, Advanced Analytics)
+│   ├── screens/
+│   │   ├── admin/                  # Admin portal, class management, WhatsApp settings
+│   │   │   └── analytics/          # Advanced Analytics Dashboard & 8 visual widgets
+│   │   ├── auth/                   # Authentication & role-based routing
+│   │   ├── coordinator/            # Morning & afternoon attendance marking screens
+│   │   └── student/                # Student personal attendance dashboard
+│   ├── services/                   # Business logic (Auth, Attendance, Analytics, Exports)
+│   └── widgets/                    # Reusable UI widgets, dialogs, and components
+├── supabase/
+│   ├── functions/                  # Deno Edge functions (webhook, outbox worker, report jobs)
+│   └── migrations/                 # PostgreSQL schema migrations and stored procedures
+├── test/                           # Automated unit, service, widget, and export test suites
+├── CHANGELOG.md                    # Release and migration history
+└── pubspec.yaml                    # Flutter package manifests and dependencies
 ```
-
-All 33 comprehensive tests pass with 100% coverage across:
-1. New absence triggers notification to Class Advisor.
-2. Present record does NOT trigger an absence notification.
-3. Re-saving unchanged attendance does not duplicate notifications.
-4. Corrected attendance (changed from Absent to Present) is excluded from future summaries.
-5. Approved leave (`od` - On Duty) is excluded according to college policy.
-6. Repeated-absence threshold works correctly (e.g. 2 absences < threshold vs 3 absences >= threshold).
-7. Correct staff receive each notification (Advisor for class, Dean for summary).
-8. Unauthorized users cannot mark attendance or access restricted logs.
-9. WhatsApp API failures do not rollback attendance records.
-10. Failed notifications are retried with exponential backoff.
-11. Duplicate webhook events do not corrupt delivery statuses.
-12. Scheduled summaries are idempotent across restarts.
-13. Missing API credentials result in clean configuration error without exposing secrets.
-14. BUNK status is counted towards repeated-absence thresholds.
-15. Unfinalized (open) sessions are strictly excluded from repeated-absence evaluations.
-16. Unmarked students are strictly distinguished from absent and never counted as absent.
-17. Attendance percentages are calculated strictly on recorded denominator.
-18. Report message format matches Section 5 specification exactly (headers, session counts, comparisons, and timestamps).
-19. Authorized recipient management, phone masking (+91 98*** **299), and class assignment.
-20. Manual send report dispatches and creates delivery logs.
-21. Webhook delivery status updates from SENT to DELIVERED and READ.
-22. Controlled retry for eligible failed delivery logs.
-23. Test WhatsApp connection validation with international phone number checks.
 
 ---
 
-## 9. Administrator UI Guide
+## 9. Security & Governance
 
-1. Log in with Administrator credentials (`admin@college.edu`).
-2. Navigate to **System Control Panel -> Administrative Operations**:
-   - **WhatsApp Attendance Alerts Configuration**:
-     - **Tab 1: API Settings**: Configure Phone Number ID, Business Account ID, Graph API Version (`v21.0`), view server-side token status, and send instant Test Messages.
-     - **Tab 2: Report Scheduling**: Configure automatic daily reports at 14:00 IST (2:00 PM), preliminary vs final report dispatch rules, and absence thresholds.
-     - **Tab 3: Authorized Recipients**: Add, edit, or disable staff recipients with designation, international phone numbers, class assignment mapping, and consent tracking.
-     - **Tab 4: Meta Templates**: Reference official template parameters for `attendance_daily_report`, `attendance_absence_alert`, and `attendance_repeat_summary`.
-   - **Send WhatsApp Attendance Report**:
-     - Interactive modal to select Date, Class, Report Scope (Morning, Afternoon, Combined), and authorized staff recipients with a real-time WhatsApp bubble preview.
-   - **WhatsApp Delivery Logs & History**:
-     - Monitor delivery statuses: `Queued`, `Processing`, `Sent`, `Delivered`, `Read`, `Failed`.
-     - Filter logs by Date Range, Class, Recipient, and Status.
-     - 1-click retry for eligible failed messages.
-     - Trigger **Flush Outbox** to immediately process queued alerts.
+- **Zero Service-Role Exposure**: Client applications strictly use the public anonymous / publishable Supabase key (`sb_publishable_...`). Service-role administrative keys are never bundled into mobile or web builds.
+- **Public Repository Cleanliness**: `.gitignore` comprehensively excludes sensitive `.env` files, Android keystores, local SDK paths (`local.properties`), IDE configurations, and temporary cache directories (`.dart_tool/`, `build/`).
+- **Idempotent Webhooks & Outbox**: WhatsApp notifications employ deterministic idempotency keys and HMAC-SHA256 signature verification to prevent duplicate messaging.
